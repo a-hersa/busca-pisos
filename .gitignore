@@ -7,6 +7,7 @@
 docker-compose.override.yml
 docker-compose.local.yml
 backup.compose.yml
+.claude/
 
 # Calculadora de rentabilidad
 test*.ipynb

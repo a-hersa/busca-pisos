@@ -1,6 +1,11 @@
 services:
   web:
-    image: ahersa/web-inmobiliario:latest
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+      platforms:
+        - linux/amd64
+        - linux/arm64/v8
     container_name: inmobiliario-web
     restart: always
     environment:
@@ -16,7 +21,12 @@ services:
       - reverse-proxy
 
   shiny:
-    image: ahersa/shiny-inmobiliario:latest
+    build:
+      context: ./shiny
+      dockerfile: Dockerfile
+      platforms:
+        - linux/amd64
+        - linux/arm64/v8
     container_name: inmobiliario-shiny
     restart: always
     environment:
@@ -29,7 +39,12 @@ services:
       - reverse-proxy
   
   scrapy:
-    image: ahersa/scrapy-inmobiliario:latest
+    build:
+      context: ./scrapy
+      dockerfile: Dockerfile
+      platforms:
+        - linux/amd64
+        - linux/arm64/v8
     container_name: inmobiliario-scrapy
     restart: unless-stopped
     # Esto mantiene el contenedor en ejecución sin hacer nada.
