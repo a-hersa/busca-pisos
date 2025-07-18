@@ -69,7 +69,7 @@ DEFAULT_REQUEST_HEADERS = {
 # Enable or disable downloader middlewares
 # See https://docs.scrapy.org/en/latest/topics/downloader-middleware.html
 DOWNLOADER_MIDDLEWARES = {
-    "inmobiliario.middlewares.ScrapingAntProxyMiddleware": 543,
+    "inmobiliario.middlewares.ScrapingAntProxyMiddleware": 100,  # High priority to ensure it runs first
 }
 
 # Enable or disable extensions

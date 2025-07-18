@@ -24,6 +24,13 @@ class ScrapingAntProxyMiddleware:
         return s
 
     def process_request(self, request, spider):
+        # Only process requests to idealista.com through ScrapingAnt
+        if 'idealista.com' not in request.url:
+            spider.logger.debug(f"Skipping ScrapingAnt for non-idealista URL: {request.url}")
+            return None
+            
+        spider.logger.info(f"Processing request through ScrapingAnt: {request.url}")
+        
         # Codifica la URL original
         encoded_url = quote(request.url, safe='')
 
@@ -34,6 +41,8 @@ class ScrapingAntProxyMiddleware:
             # Construye la nueva URL con el proxy y otros parámetros
             api_request_path = f"/v2/general?url={encoded_url}&x-api-key={self.api_key}{self.browser}{self.proxy_country}{self.extra_params}"
 
+            spider.logger.debug(f"ScrapingAnt API request: {api_request_path}")
+
             # Realiza la solicitud al proxy
             conn.request("GET", api_request_path)
             res = conn.getresponse()
@@ -41,6 +50,7 @@ class ScrapingAntProxyMiddleware:
             # Si la respuesta es exitosa, reemplazamos el cuerpo de la respuesta en Scrapy
             if res.status == 200:
                 response_data = res.read()
+                spider.logger.info(f"Successfully received response from ScrapingAnt for {request.url}")
                 # Crea una nueva respuesta con los datos obtenidos del proxy
                 new_response = scrapy.http.HtmlResponse(
                     url=request.url,
@@ -50,8 +60,12 @@ class ScrapingAntProxyMiddleware:
                 )
                 return new_response
             else:
-                spider.logger.error(f"Failed to process proxy request: {res.status} {res.reason}")
+                spider.logger.error(f"ScrapingAnt proxy request failed: {res.status} {res.reason}")
+                spider.logger.error(f"Response body: {res.read()}")
                 return None
+        except Exception as e:
+            spider.logger.error(f"Exception in ScrapingAnt middleware: {e}")
+            return None
         finally:
             # Asegurar que la conexión se cierre
             conn.close()

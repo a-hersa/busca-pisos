@@ -25,36 +25,66 @@ class NovedadesSpider(scrapy.Spider):
         print(f'number of properties in this page is {len(containers)}')
 
         for container in containers:
-            # Extrae el href del primer enlace dentro del contenedor
-            relative_url = container.css('a.item-link::attr(href)').get()
+            # Extrae los datos directamente del listado
+            propiedad = PropertyItem()
             
+            # URL del enlace de la propiedad
+            relative_url = container.css('a.item-link::attr(href)').get()
             if relative_url:
-                # Construye la URL completa
                 full_url = response.urljoin(relative_url)
-                
-                # Aquí podrías seguir a la URL o simplemente imprimirla
-                yield scrapy.Request(full_url, callback=self.parse_item)
+                propiedad['p_id'] = full_url
+                propiedad['url'] = full_url
+            
+            # Nombre/título de la propiedad
+            raw_title = container.css('a.item-link::text').get()
+            
+            # Extract location from title and clean title
+            if raw_title:
+                # Split by comma and take the last part as location
+                title_parts = raw_title.split(',')
+                if len(title_parts) > 1:
+                    propiedad['poblacion'] = title_parts[-1].strip()
+                    # Remove location from title (keep all parts except the last one)
+                    propiedad['nombre'] = ','.join(title_parts[:-1]).strip()
+                else:
+                    propiedad['nombre'] = raw_title.strip()
+                    propiedad['poblacion'] = ""
+            else:
+                propiedad['nombre'] = ""
+                propiedad['poblacion'] = ""
+            
+            # Precio
+            propiedad['precio'] = container.css('span.item-price::text').get()
+            
+            # Información adicional (metros, habitaciones, etc.)
+            detail_items = container.css('span.item-detail::text').getall()
+            propiedad['metros'] = ""
+            propiedad['habitaciones'] = ""
+            propiedad['planta'] = ""
+            
+            if detail_items:
+                # Buscar metros cuadrados
+                for detail in detail_items:
+                    if 'm²' in detail:
+                        propiedad['metros'] = detail.replace('m²', '').strip()
+                    elif 'hab.' in detail:
+                        propiedad['habitaciones'] = detail.replace('hab.', '').strip()
+                    elif 'planta' in detail.lower():
+                        propiedad['planta'] = detail.strip()
+            
+            # Descripción (si está disponible en el listado)
+            propiedad['descripcion'] = container.css('p.item-description::text').get()
+            
+            # Campos adicionales con valores por defecto
+            propiedad['ascensor'] = ""
+            propiedad['fecha_new'] = ""
+            propiedad['fecha_updated'] = ""
+            propiedad['estatus'] = "activo"
+            
+            yield propiedad
 
         # Opcional: Si la página tiene paginación, puedes seguir los enlaces a las páginas siguientes
         next_page = response.css('a.icon-arrow-right-after::attr(href)').get()
         if next_page:
             yield response.follow(next_page, self.parse)
 
-    def parse_item(self, response):
-        propiedad = PropertyItem()
-        propiedad['p_id'] = response.url
-        propiedad["nombre"] = response.css('span.main-info__title-main::text').get()
-        # propiedad["fecha_new"] = response.css('#stats > p::text').get()
-        propiedad["precio"] = response.css('span.info-data-price > span.txt-bold::text').get()
-        
-        # Safely extract features with fallback values
-        features = response.css('div.info-features > span::text').getall()
-        propiedad["metros"] = features[0] if len(features) > 0 else ""
-        propiedad["habitaciones"] = features[1] if len(features) > 1 else ""
-        propiedad["planta"] = features[2] if len(features) > 2 else ""
-        propiedad["ascensor"] = features[2] if len(features) > 2 else ""
-        
-        propiedad["poblacion"] = response.css('span.main-info__title-minor::text').get()
-        propiedad["url"] = response.url
-        propiedad["descripcion"] = response.css('div.adCommentsLanguage > p::text').get()
-        yield propiedad

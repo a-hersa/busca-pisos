@@ -23,7 +23,7 @@ class DatosCalculadora:
             self.comunidad = 400
             self.seguros = 400
             self.total_gastos = self.ibi+self.basuras+self.seguros+self.comunidad
-            self.alquiler = int(float(self.metros) * float(getattr(precioMetroAlquiler, self.poblacion)))
+            self.alquiler = int(float(self.metros) * float(getattr(precioMetroAlquiler, self.poblacion, 12)))
             self.financiado = 80
             self.hipoteca = int((self.financiado/100)*self.p_compra)
             self.a_aportar = int(self.p_compra+self.itp+self.reforma+self.notaria+self.registro+self.agencia+self.tasacion-self.hipoteca)
@@ -99,7 +99,7 @@ def calculadora(nombre, precio, metros, poblacion):
         total_gastos = ibi+basuras+seguros+comunidad
         resultados.append(total_gastos)
 
-        alquiler = int(float(metros) * float(getattr(precioMetroAlquiler, poblacion)))
+        alquiler = int(float(metros) * float(getattr(precioMetroAlquiler, poblacion, 12)))
         resultados.append(alquiler)
 
         financiado = 80
