@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="es">
+
+{% block head %}
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark" />
+<link rel="stylesheet" href="{{ url_for('static', filename='css/pico.min.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+<link rel="shortcut icon" href="{{ url_for('static', filename='icon.png') }}">
+<title>{{ error_title or 'Error' }} - Inmobiliario Tools</title>
+{% endblock %}
+
+{% block body %}
+<main class="container">
+  <article>
+    <header>
+      <h1>{{ error_title or 'Error' }}</h1>
+    </header>
+    <p>{{ error_message or 'Ha ocurrido un error inesperado.' }}</p>
+    <footer>
+      <a href="{{ url_for('home_page') }}" role="button">Volver al inicio</a>
+    </footer>
+  </article>
+</main>
+{% endblock %}
+
+</html>

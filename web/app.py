@@ -1,6 +1,7 @@
 from flask import Flask, send_file, request, render_template
 from src.calculadora import DatosCalculadora
 from src.calculadora import calculadora
+from src.scraper import scraper
 import tempfile
 from openpyxl import load_workbook
 from dotenv import load_dotenv
@@ -8,6 +9,8 @@ import psycopg2
 import os
 from unidecode import unidecode
 import logging
+import requests
+import json
 
 
 app=Flask(__name__)
@@ -25,6 +28,54 @@ else:
 
 # Registra la función para usarla en la plantilla
 app.jinja_env.globals.update(calculadora=calculadora)
+
+# Función para verificar Turnstile
+def verify_turnstile(token):
+    """
+    Verifica el token de Turnstile con la API de Cloudflare
+    """
+    if not token:
+        return False
+    
+    secret_key = os.getenv("TURNSTILE_SECRET_KEY")
+    if not secret_key:
+        app.logger.error("TURNSTILE_SECRET_KEY not configured")
+        # In development mode, allow access if using test site key
+        if os.getenv("TURNSTILE_SITE_KEY") == "0x4AAAAAAA49rLAtoXbLsqea":
+            app.logger.info("Using test site key in development mode - allowing access")
+            return True
+        return False
+    
+    # Datos para enviar a la API de Cloudflare
+    data = {
+        'secret': secret_key,
+        'response': token,
+        'remoteip': request.remote_addr
+    }
+    
+    try:
+        # Llamada a la API de verificación de Turnstile
+        response = requests.post(
+            'https://challenges.cloudflare.com/turnstile/v0/siteverify',
+            data=data,
+            timeout=10
+        )
+        
+        result = response.json()
+        
+        if result.get('success', False):
+            app.logger.info("Turnstile verification successful")
+            return True
+        else:
+            app.logger.warning(f"Turnstile verification failed: {result.get('error-codes', [])}")
+            return False
+            
+    except requests.RequestException as e:
+        app.logger.error(f"Turnstile verification request failed: {e}")
+        return False
+    except json.JSONDecodeError as e:
+        app.logger.error(f"Turnstile verification JSON decode failed: {e}")
+        return False
 
 # Configurar la conexión a la base de datos PostgreSQL
 def get_db_connection():
@@ -82,6 +133,13 @@ def home_page():
 @app.route('/calculadora', methods=['GET', 'POST'])
 def calculadora():
     if request.method == 'POST':
+        # Verificar Turnstile antes de procesar
+        turnstile_token = request.form.get('cf-turnstile-response')
+        if not verify_turnstile(turnstile_token):
+            app.logger.warning("Turnstile validation failed for POST request")
+            return render_template('error.html', 
+                                 error_title="Verificación de seguridad fallida",
+                                 error_message="Por favor, completa la verificación de seguridad e inténtalo de nuevo."), 400
 
         # Caso: Solicitud POST con URL del scraper
         url = request.form['url']
