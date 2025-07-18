@@ -8,17 +8,20 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/pico.min.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
 <link rel="shortcut icon" href="{{ url_for('static', filename='icon.png') }}">
+<!-- Turnstile script removed as form is hidden
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+-->
 <title>Inmobiliario Tools</title>
 {% endblock %}
 
 {% block body %}
 <main class="container">
   <h1>Inmobiliario Tools</h1>
-  <h6>Herramientas para buscar, calcular y analizar inmuebles</h6>
-  <p>&#127775;<a href="#calculadora-de-rentabilidad">Calculadora de rentabilidad</a> - Calcula la rentabilidad de una propiedad.</p>
+  <h6>Herramientas para buscar y analizar inmuebles</h6>
   <p>&#127775;<a href="#buscador-de-propiedades">Buscador de propiedades</a> - Consulta los inmuebles encontrados hasta ahora con los filtros indicados.</p>
-  <p>&#127775;<a href="https://data.proyectosal.com">Análisis de datos</a> - Analiza los datos en conjunto de las propiedades encontradas hasta ahora.</p>
+  <p>&#127775;<a href="https://data.proyectosal.com" target="_blank">Análisis de datos</a> - Analiza los datos en conjunto de las propiedades encontradas hasta ahora.</p>
+  
+  <!-- Calculadora de rentabilidad section temporarily hidden
   <h2 id="calculadora-de-rentabilidad">Calculadora de rentabilidad</h3>
   <form action="{{url_for('calculadora')}}" method="POST" onsubmit="setAriaBusy()">
     <fieldset role="group">
@@ -27,6 +30,7 @@
     </fieldset>
     <div class="cf-turnstile" data-sitekey="{{ turnstile_site_key }}"></div>
   </form>
+  -->
   <h2 id="buscador-de-propiedades">Buscador de propiedades</h3>
   <p>Los inmuebles se actualizan diariamente con los siguientes filtros:</p>
   <li>Mataró, Premiá de Mar, Granollers, Argentona, Sant Pol de Mar, Canet de Mar, Caldes d'Estrac, Arenys de Mar.</li>
