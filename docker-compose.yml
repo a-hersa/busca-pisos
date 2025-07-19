@@ -93,8 +93,6 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    volumes:
-      - ./scrapy:/app/scrapy
 
   # Celery Worker
   celery-worker:
@@ -118,8 +116,6 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    volumes:
-      - ./scrapy:/app/scrapy
     command: celery -A app.celery_app worker --loglevel=info --concurrency=4
 
   # Celery Beat Scheduler

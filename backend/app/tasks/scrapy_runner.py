@@ -26,8 +26,8 @@ def run_spider(self, job_id: int, spider_name: str, start_urls: list, job_config
             "-s", f"JOB_CONFIG={json.dumps(job_config)}"
         ]
         
-        # Set working directory to scrapy project
-        scrapy_project_dir = "/app/../scrapy/inmobiliario"
+        # Set working directory to scrapy project (now integrated in backend)
+        scrapy_project_dir = "/app/inmobiliario"
         
         # Update task progress
         self.update_state(
