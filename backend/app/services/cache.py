@@ -12,7 +12,7 @@ class CacheService:
     """Redis-based caching service for API responses and data"""
     
     def __init__(self):
-        redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/1")  # Use different DB than Celery
+        redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0").replace("/0", "/1")  # Use different DB than Celery
         try:
             self.redis_client = redis.from_url(redis_url, decode_responses=False)
             # Test connection
