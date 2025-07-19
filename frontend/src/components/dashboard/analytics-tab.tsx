@@ -142,7 +142,7 @@ export function AnalyticsTab() {
                   fill="#8884d8"
                   dataKey="count"
                 >
-                  {dashboardData.price_distribution.map((entry, index) => (
+                  {dashboardData.price_distribution.map((entry: any, index: number) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
@@ -197,7 +197,7 @@ export function AnalyticsTab() {
                 <Tooltip 
                   labelFormatter={(value) => new Date(value).toLocaleDateString('es-ES')}
                   formatter={(value, name) => [
-                    name === 'properties_found' ? `${value} propiedades` : `${Math.round(value)}€`,
+                    name === 'properties_found' ? `${value} propiedades` : `${Math.round(Number(value))}€`,
                     name === 'properties_found' ? 'Propiedades Encontradas' : 'Precio Promedio'
                   ]}
                 />
@@ -320,7 +320,7 @@ export function AnalyticsTab() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {performanceData.spider_performance.map((spider, index) => (
+                {performanceData.spider_performance.map((spider: any, index: number) => (
                   <tr key={index}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       {spider.spider_name}

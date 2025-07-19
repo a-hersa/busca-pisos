@@ -7,7 +7,7 @@ import { CrawlJob, CrawlJobCreate } from '@/types'
 import { JobCard } from '../jobs/job-card'
 import { CreateJobModal } from '../jobs/create-job-modal'
 import { JobDetailsModal } from '../jobs/job-details-modal'
-import { Plus, Loader2, RefreshCw } from 'lucide-react'
+import { Plus, Loader2, RefreshCw, Briefcase } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export function JobsTab() {

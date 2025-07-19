@@ -37,6 +37,7 @@ export function CreateJobModal({ isOpen, onClose, onSubmit, isLoading }: CreateJ
     }
   })
 
+  // @ts-ignore
   const { fields, append, remove } = useFieldArray({
     control: form.control,
     name: 'start_urls'

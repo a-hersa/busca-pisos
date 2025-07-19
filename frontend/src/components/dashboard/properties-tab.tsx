@@ -14,6 +14,11 @@ export function PropertiesTab() {
     poblacion: '',
     min_precio: '',
     max_precio: '',
+    habitaciones: '',
+    ascensor: '',
+    search: '',
+    sort_by: 'fecha_crawl',
+    sort_order: 'desc',
     skip: 0,
     limit: 20
   })
