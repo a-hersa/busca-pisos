@@ -16,12 +16,9 @@ docker compose up -d
 - Backend API: http://localhost:8001
 - Flask Web: http://localhost:5000
 
-## Development Credentials
+## First User Setup
 
-**Test User:**
-- Username: `testuser`
-- Password: `testpass123`
-- Email: `test@example.com`
+The first user to register will automatically become the admin user and won't require email confirmation.
 
 ## Production Setup
 

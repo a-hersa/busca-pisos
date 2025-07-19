@@ -31,12 +31,19 @@ async def register(
             detail="Username or email already registered"
         )
     
+    # Check if this is the first user (admin)
+    result_count = await session.execute(select(User))
+    existing_users = result_count.scalars().all()
+    is_first_user = len(existing_users) == 0
+    
     # Create new user
     hashed_password = get_password_hash(user_data.password)
     new_user = User(
         username=user_data.username,
         email=user_data.email,
-        password_hash=hashed_password
+        password_hash=hashed_password,
+        role='admin' if is_first_user else 'user',
+        is_active=True  # First user doesn't need email confirmation
     )
     
     session.add(new_user)

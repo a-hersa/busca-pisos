@@ -340,15 +340,15 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 # Health check
 curl http://localhost:8000/health
 
-# Register a user
+# Register a user (first user becomes admin automatically)
 curl -X POST http://localhost:8000/auth/register \
   -H "Content-Type: application/json" \
-  -d '{"username": "testuser", "email": "test@example.com", "password": "testpass123"}'
+  -d '{"username": "admin", "email": "admin@example.com", "password": "your_secure_password"}'
 
 # Login
 curl -X POST http://localhost:8000/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"username": "testuser", "password": "testpass123"}'
+  -d '{"username": "admin", "password": "your_secure_password"}'
 ```
 
 ## Integration Status

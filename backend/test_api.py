@@ -16,10 +16,11 @@ def test_health():
 
 def test_user_registration():
     """Test user registration"""
+    import os
     user_data = {
-        "username": "testuser",
-        "email": "test@example.com",
-        "password": "testpass123"
+        "username": os.getenv("TEST_USERNAME", "testuser"),
+        "email": os.getenv("TEST_EMAIL", "test@example.com"),
+        "password": os.getenv("TEST_PASSWORD", "testpass123")
     }
     
     response = requests.post(f"{BASE_URL}/auth/register", json=user_data)
@@ -33,9 +34,10 @@ def test_user_registration():
 
 def test_user_login():
     """Test user login and return token"""
+    import os
     login_data = {
-        "username": "testuser",
-        "password": "testpass123"
+        "username": os.getenv("TEST_USERNAME", "testuser"),
+        "password": os.getenv("TEST_PASSWORD", "testpass123")
     }
     
     response = requests.post(f"{BASE_URL}/auth/login", json=login_data)
