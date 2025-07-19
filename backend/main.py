@@ -9,6 +9,7 @@ from app.routers import auth, users, jobs, properties, admin
 from app.websocket import manager
 from app.core.deps import get_current_user
 from app.models.user import User
+from app.middleware.cache_middleware import CacheMiddleware
 
 load_dotenv()
 
@@ -26,6 +27,9 @@ app = FastAPI(
     version="2.0.0",
     lifespan=lifespan
 )
+
+# Add middlewares
+app.add_middleware(CacheMiddleware, cache_ttl=300)  # 5 minutes cache
 
 # CORS middleware
 app.add_middleware(

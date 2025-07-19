@@ -1,12 +1,13 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, desc
+from sqlalchemy import select, desc, func
 from typing import List, Optional
 
 from app.database import get_async_session
 from app.models.property import Property
 from app.schemas.property import PropertyResponse
 from app.core.deps import get_current_user
+from app.services.cache import cache_service
 
 router = APIRouter()
 
@@ -24,6 +25,21 @@ async def list_properties(
     sort_order: Optional[str] = Query("desc", regex="^(asc|desc)$"),
     session: AsyncSession = Depends(get_async_session)
 ):
+    # Generate cache key for this request
+    cache_key = cache_service.generate_cache_key(
+        "properties_list",
+        skip=skip, limit=limit, poblacion=poblacion,
+        min_precio=min_precio, max_precio=max_precio,
+        habitaciones=habitaciones, ascensor=ascensor,
+        search=search, sort_by=sort_by, sort_order=sort_order
+    )
+    
+    # Try to get from cache first
+    cached_result = await cache_service.get(cache_key)
+    if cached_result:
+        return cached_result
+    
+    # Build optimized query with indexes in mind
     query = select(Property)
     
     # Apply filters
@@ -47,12 +63,11 @@ async def list_properties(
             Property.poblacion.ilike(search_term)
         )
     
-    # Apply sorting
+    # Apply sorting with proper indexes
     if sort_by == "precio":
         sort_field = Property.precio
     elif sort_by == "metros":
-        # Handle metros as string, convert to numeric for sorting
-        sort_field = Property.metros
+        sort_field = func.cast(Property.metros, func.Numeric)  # Cast string to numeric for proper sorting
     elif sort_by == "poblacion":
         sort_field = Property.poblacion
     else:
@@ -68,6 +83,10 @@ async def list_properties(
     
     result = await session.execute(query)
     properties = result.scalars().all()
+    
+    # Cache the result for 5 minutes
+    await cache_service.set(cache_key, properties, 300)
+    
     return properties
 
 @router.get("/{property_id}", response_model=PropertyResponse)

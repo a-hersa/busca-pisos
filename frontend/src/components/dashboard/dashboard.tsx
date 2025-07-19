@@ -3,10 +3,8 @@
 import { useState } from 'react'
 import { useAuth } from '@/hooks/use-auth'
 import { useWebSocket } from '@/hooks/use-websocket'
-import { JobsTab } from './jobs-tab'
-import { PropertiesTab } from './properties-tab'
 import { AdminTab } from './admin-tab'
-import { AnalyticsTab } from './analytics-tab'
+import { LazyJobsTab, LazyPropertiesTab, LazyAnalyticsTab, LazyComponentWrapper } from '../ui/lazy-loading'
 import { 
   LogOut, 
   Briefcase, 
@@ -99,9 +97,21 @@ export function Dashboard() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-        {activeTab === 'jobs' && <JobsTab />}
-        {activeTab === 'properties' && <PropertiesTab />}
-        {activeTab === 'analytics' && <AnalyticsTab />}
+        {activeTab === 'jobs' && (
+          <LazyComponentWrapper>
+            <LazyJobsTab />
+          </LazyComponentWrapper>
+        )}
+        {activeTab === 'properties' && (
+          <LazyComponentWrapper>
+            <LazyPropertiesTab />
+          </LazyComponentWrapper>
+        )}
+        {activeTab === 'analytics' && (
+          <LazyComponentWrapper>
+            <LazyAnalyticsTab />
+          </LazyComponentWrapper>
+        )}
         {activeTab === 'admin' && user?.role === 'admin' && <AdminTab />}
       </main>
     </div>
