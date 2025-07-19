@@ -1,4 +1,21 @@
 services:
+  # Next.js Frontend
+  frontend:
+    build: ./frontend
+    container_name: inmobiliario-frontend
+    restart: always
+    environment:
+      - NEXT_PUBLIC_API_URL=http://backend:8000
+      - NEXT_PUBLIC_WS_URL=ws://backend:8000
+      - TZ=Europe/Madrid
+    networks:
+      - flask_network
+      - reverse-proxy
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
   # FastAPI Backend
   backend:
     build: ./backend
@@ -9,6 +26,7 @@ services:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - SECRET_KEY=${SECRET_KEY}
+      - REDIS_URL=redis://redis:6379/0
       - TZ=Europe/Madrid
     networks:
       - flask_network
@@ -17,6 +35,7 @@ services:
       - "8000:8000"
     depends_on:
       - postgres
+      - redis
   
   # Legacy Flask Web (keeping for now)
   web:
