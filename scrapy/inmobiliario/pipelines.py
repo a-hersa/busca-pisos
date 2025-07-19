@@ -26,14 +26,11 @@ class PropertyItemPipeline:
             # Por ejemplo, puedes limpiar los datos, calcular nuevos valores, etc.
 
             # Ejemplo: Convertir el precio a un formato numérico
-            item['p_id'] = self.convert_to_p_id(item['p_id'])
+            # p_id is already an integer from the spider, no conversion needed
 
             item['nombre'] = self.trim_name(item['nombre'])
 
-            item['fecha_new'] = datetime.today().strftime('%Y-%m-%d')
-            # item['fecha_new'] = self.convert_str_to_date(item['fecha_new'])
-            
-            item['fecha_updated'] = datetime.today().strftime('%Y-%m-%d')
+            # fecha_crawl is already set in spider with current timestamp
 
             item['precio'] = self.convert_price_to_number(item['precio'])
 
@@ -43,7 +40,7 @@ class PropertyItemPipeline:
 
             item['planta'] = self.convert_floor_to_number(item['planta'])
 
-            item['ascensor'] = self.convert_lift_to_number(item['ascensor'], item['descripcion'])
+            # ascensor is already set in spider based on item-detail extraction
 
             item['poblacion'] = self.extract_city(item['poblacion'])
 
@@ -210,34 +207,11 @@ class PostgresPipeline:
         )
         self.cursor = self.connection.cursor()
 
-        # Crear las tablas si no existen
+        # Tables are now created via postgres init scripts
+        # Just ensure fecha_crawl column exists for migration
         self.cursor.execute('''
-            CREATE TABLE IF NOT EXISTS propiedades (
-                p_id INT PRIMARY KEY,
-                nombre VARCHAR(255),
-                fecha_new DATE,
-                fecha_updated DATE,
-                precio INT,
-                metros INT,
-                habitaciones INT,
-                planta INT,
-                ascensor INT,
-                poblacion VARCHAR(255),
-                url VARCHAR(255),
-                descripcion VARCHAR(4000),
-                estatus VARCHAR(255)            
-            )
-        ''')
-        
-        # Crear tabla para municipios/URLs
-        self.cursor.execute('''
-            CREATE TABLE IF NOT EXISTS municipios (
-                id SERIAL PRIMARY KEY,
-                url VARCHAR(500) UNIQUE NOT NULL,
-                fecha_found DATE DEFAULT CURRENT_DATE,
-                spider_name VARCHAR(100),
-                processed BOOLEAN DEFAULT FALSE
-            )
+            ALTER TABLE propiedades 
+            ADD COLUMN IF NOT EXISTS fecha_crawl TIMESTAMP
         ''')
         self.connection.commit()
 
@@ -272,11 +246,10 @@ class PostgresPipeline:
         
         # Handle PropertyItem for property spiders
         elif isinstance(item, PropertyItem):
-            # Extract p_id from URL and convert to int safely
+            # p_id is already an integer from the spider
             try:
-                p_id_str = item['p_id'].split('/')[-2] if isinstance(item['p_id'], str) else str(item['p_id'])
-                p_id = int(p_id_str)
-            except (ValueError, IndexError, AttributeError):
+                p_id = int(item['p_id'])
+            except (ValueError, TypeError):
                 spider.logger.error(f"Could not extract valid p_id from: {item['p_id']}")
                 raise DropItem(f"Invalid p_id: {item['p_id']}")
             
@@ -304,6 +277,7 @@ class PostgresPipeline:
                         UPDATE propiedades
                         SET nombre = %s,
                             fecha_updated = %s,
+                            fecha_crawl = %s,
                             precio = %s,
                             metros = %s,
                             habitaciones = %s,
@@ -316,7 +290,8 @@ class PostgresPipeline:
                         WHERE p_id = %s
                     ''', (
                         item.get('nombre'),
-                        item.get('fecha_updated'),
+                        item.get('fecha_crawl'),  # Use fecha_crawl for fecha_updated to maintain compatibility
+                        item.get('fecha_crawl'),
                         item.get('precio'),
                         item.get('metros'),
                         item.get('habitaciones'),
@@ -336,13 +311,14 @@ class PostgresPipeline:
                 else:
                     # Insert item into database
                     self.cursor.execute("""
-                        INSERT INTO propiedades (p_id, nombre, fecha_new, fecha_updated, precio, metros, habitaciones, planta, ascensor, poblacion, url, descripcion, estatus)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        INSERT INTO propiedades (p_id, nombre, fecha_new, fecha_updated, fecha_crawl, precio, metros, habitaciones, planta, ascensor, poblacion, url, descripcion, estatus)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     """, (
                         p_id,
                         item.get('nombre'),
-                        item.get('fecha_new'),
-                        item.get('fecha_updated'),
+                        item.get('fecha_crawl'),  # Use fecha_crawl for fecha_new to maintain compatibility
+                        item.get('fecha_crawl'),  # Use fecha_crawl for fecha_updated to maintain compatibility
+                        item.get('fecha_crawl'),
                         item.get('precio'),
                         item.get('metros'),
                         item.get('habitaciones'),
@@ -448,8 +424,7 @@ class SQLitePipeline:
             CREATE TABLE IF NOT EXISTS propiedades (
                 p_id INTEGER PRIMARY KEY,
                 nombre TEXT,
-                fecha_new DATE,
-                fecha_updated DATE,
+                fecha_crawl TIMESTAMP,
                 precio INTEGER,
                 metros INTEGER,
                 habitaciones INTEGER,
@@ -479,14 +454,13 @@ class SQLitePipeline:
             try:
                 self.cursor.execute("""
                     INSERT OR REPLACE INTO propiedades (
-                        p_id, nombre, fecha_new, fecha_updated, precio, metros, habitaciones,
+                        p_id, nombre, fecha_crawl, precio, metros, habitaciones,
                         planta, ascensor, poblacion, url, descripcion
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
                     item.get('p_id'),
                     item.get('nombre'),
-                    date.today(),                # fecha_new
-                    date.today(),                # fecha_updated
+                    item.get('fecha_crawl'),
                     item.get('precio'),
                     item.get('metros'),
                     item.get('habitaciones'),

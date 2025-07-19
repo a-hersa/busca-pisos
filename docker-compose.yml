@@ -45,7 +45,7 @@ services:
     command: tail -f /dev/null 
 
   postgres:
-    image: postgres:17
+    build: ./postgres
     container_name: inmobiliario-postgres
     restart: always
     environment:

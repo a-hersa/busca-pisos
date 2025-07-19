@@ -1,9 +1,10 @@
 import scrapy
+from datetime import datetime
 from ..items import PropertyItem
 
 
-class NovedadesSpider(scrapy.Spider):
-    name = "novedades"
+class PropiedadesSpider(scrapy.Spider):
+    name = "propiedades"
     allowed_domains = ["idealista.com", "api.scrapingant.com"]
     
     # Puedes agregar más URLs a esta lista
@@ -32,7 +33,13 @@ class NovedadesSpider(scrapy.Spider):
             relative_url = container.css('a.item-link::attr(href)').get()
             if relative_url:
                 full_url = response.urljoin(relative_url)
-                propiedad['p_id'] = full_url
+                # Extract p_id as integer from URL (e.g., from /inmueble/107435644/ get 107435644)
+                try:
+                    p_id_str = full_url.rstrip('/').split('/')[-1]
+                    propiedad['p_id'] = int(p_id_str)
+                except (ValueError, IndexError):
+                    # Fallback: skip this property if p_id extraction fails
+                    continue
                 propiedad['url'] = full_url
             
             # Nombre/título de la propiedad
@@ -61,9 +68,10 @@ class NovedadesSpider(scrapy.Spider):
             propiedad['metros'] = ""
             propiedad['habitaciones'] = ""
             propiedad['planta'] = ""
+            propiedad['ascensor'] = 0  # Default to 0
             
             if detail_items:
-                # Buscar metros cuadrados
+                # Buscar metros cuadrados y ascensor
                 for detail in detail_items:
                     if 'm²' in detail:
                         propiedad['metros'] = detail.replace('m²', '').strip()
@@ -71,14 +79,14 @@ class NovedadesSpider(scrapy.Spider):
                         propiedad['habitaciones'] = detail.replace('hab.', '').strip()
                     elif 'planta' in detail.lower():
                         propiedad['planta'] = detail.strip()
+                    elif 'con ascensor' in detail.lower():
+                        propiedad['ascensor'] = 1
             
             # Descripción (si está disponible en el listado)
             propiedad['descripcion'] = container.css('p.item-description::text').get()
             
             # Campos adicionales con valores por defecto
-            propiedad['ascensor'] = ""
-            propiedad['fecha_new'] = ""
-            propiedad['fecha_updated'] = ""
+            propiedad['fecha_crawl'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             propiedad['estatus'] = "activo"
             
             yield propiedad

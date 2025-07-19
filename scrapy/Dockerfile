@@ -8,4 +8,4 @@ RUN apt-get update && \
 COPY . /code/
 # Create necessary directories for scrapy operations
 RUN mkdir -p /code/logs /code/inmobiliario/output /code/inmobiliario/crawls /code/inmobiliario/backend
-# CMD ["scrapy", "crawl", "novedades"]
+# CMD ["scrapy", "crawl", "propiedades"]
