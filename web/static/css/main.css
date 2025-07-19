@@ -1,8 +1,0 @@
-hgroup>:not(:first-child):last-child {
-    --pico-color: initial;
-    --pico-font-weight: unset;
-    font-size: 1rem;
-}
-input:not([type=checkbox],[type=radio]), select, textarea {
-    margin-bottom: initial;
-}

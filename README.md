@@ -14,7 +14,6 @@ docker compose up -d
 **Access:**
 - Frontend: http://localhost:3000
 - Backend API: http://localhost:8001
-- Flask Web: http://localhost:5000
 
 ## First User Setup
 
@@ -42,11 +41,11 @@ SMTP_FROM_EMAIL=your-email@gmail.com
 
 - **Frontend**: Next.js 14 with TypeScript
 - **Backend**: FastAPI with async PostgreSQL
-- **Database**: PostgreSQL 15 with health checks
+- **Database**: PostgreSQL 15 with performance optimizations
 - **Cache**: Redis for Celery and API caching
 - **Workers**: Celery for background tasks
-- **Web Scraping**: Scrapy spiders
-- **Analytics**: Custom dashboard with charts
+- **Web Scraping**: Scrapy spiders integrated with Celery
+- **Analytics**: Built-in dashboard with real-time updates
 
 ## Development
 
