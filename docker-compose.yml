@@ -1,4 +1,24 @@
 services:
+  # FastAPI Backend
+  backend:
+    build: ./backend
+    container_name: inmobiliario-backend
+    restart: always
+    environment:
+      - POSTGRES_DB=inmobiliario_db
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - SECRET_KEY=${SECRET_KEY}
+      - TZ=Europe/Madrid
+    networks:
+      - flask_network
+      - reverse-proxy
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+  
+  # Legacy Flask Web (keeping for now)
   web:
     image: ahersa/web-inmobiliario:latest
     container_name: inmobiliario-web
