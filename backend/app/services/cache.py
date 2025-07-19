@@ -12,11 +12,19 @@ class CacheService:
     """Redis-based caching service for API responses and data"""
     
     def __init__(self):
-        redis_url = os.getenv("REDIS_URL", "redis://redis:6379/1")  # Use different DB than Celery
-        self.redis_client = redis.from_url(redis_url, decode_responses=False)
+        redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/1")  # Use different DB than Celery
+        try:
+            self.redis_client = redis.from_url(redis_url, decode_responses=False)
+            # Test connection
+            self.redis_client.ping()
+        except Exception:
+            # Fallback to no caching if Redis is not available
+            self.redis_client = None
     
     async def get(self, key: str) -> Optional[Any]:
         """Get cached value by key"""
+        if not self.redis_client:
+            return None
         try:
             cached_data = self.redis_client.get(key)
             if cached_data:
@@ -27,6 +35,8 @@ class CacheService:
     
     async def set(self, key: str, value: Any, ttl: Union[int, timedelta] = 300) -> bool:
         """Set cache value with TTL (default 5 minutes)"""
+        if not self.redis_client:
+            return False
         try:
             if isinstance(ttl, timedelta):
                 ttl = int(ttl.total_seconds())
@@ -38,6 +48,8 @@ class CacheService:
     
     async def delete(self, key: str) -> bool:
         """Delete cached value"""
+        if not self.redis_client:
+            return False
         try:
             return bool(self.redis_client.delete(key))
         except Exception:
@@ -45,6 +57,8 @@ class CacheService:
     
     async def clear_pattern(self, pattern: str) -> int:
         """Clear all keys matching pattern"""
+        if not self.redis_client:
+            return 0
         try:
             keys = self.redis_client.keys(pattern)
             if keys:
