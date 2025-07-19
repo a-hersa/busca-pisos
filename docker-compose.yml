@@ -64,6 +64,39 @@ services:
       - flask_network
     command: tail -f /dev/null 
 
+  # Redis for Celery
+  redis:
+    image: redis:7-alpine
+    container_name: inmobiliario-redis
+    restart: always
+    environment:
+      - TZ=Europe/Madrid
+    networks:
+      - flask_network
+    ports:
+      - "6379:6379"
+
+  # Celery Worker
+  celery-worker:
+    build: ./backend
+    container_name: inmobiliario-celery-worker
+    restart: always
+    environment:
+      - POSTGRES_DB=inmobiliario_db
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - SECRET_KEY=${SECRET_KEY}
+      - REDIS_URL=redis://redis:6379/0
+      - TZ=Europe/Madrid
+    networks:
+      - flask_network
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./scrapy:/app/scrapy:ro
+    command: celery -A app.celery_app worker --loglevel=info --queues=scrapy_queue
+
   postgres:
     build: ./postgres
     container_name: inmobiliario-postgres

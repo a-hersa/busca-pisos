@@ -103,14 +103,93 @@
 - Automatic API documentation (FastAPI/OpenAPI)
 - Modular router structure
 
-## Next Steps: Phase 2 - Scrapy Integration
+## ✅ COMPLETED: Phase 2 - Scrapy Integration
+
+### ✅ Completed Implementation
+- [x] Celery integration for async job execution
+- [x] Scrapy job runner service  
+- [x] Real-time job status tracking
+- [x] WebSocket support for live updates
+- [x] Migration of existing spiders to new system
+
+### New Features Added
+
+#### ✅ Celery Integration
+- **Celery App Configuration** (`app/celery_app.py`):
+  - Redis backend for task queue
+  - JSON serialization
+  - Task routing to `scrapy_queue`
+  - Europe/Madrid timezone
+
+#### ✅ Scrapy Job Runner
+- **Async Task Runner** (`app/tasks/scrapy_runner.py`):
+  - `run_spider()` Celery task for executing spiders
+  - Subprocess execution with timeout (1 hour)
+  - Real-time status updates to database
+  - Parse scraped items count from output
+  - Comprehensive error handling and logging
+
+#### ✅ Job Management Service
+- **JobRunnerService** (`app/services/job_runner.py`):
+  - `execute_job()` - Start job execution via Celery
+  - `get_job_status()` - Real-time job status with Celery state
+  - `cancel_job()` - Cancel running jobs with cleanup
+  - `get_job_executions()` - Execution history
+
+#### ✅ Enhanced Job API Endpoints
+- **New Job Routes** (`app/routers/jobs.py`):
+  - `POST /api/jobs/{job_id}/run` - Execute job with Celery
+  - `GET /api/jobs/{job_id}/status` - Real-time status monitoring
+  - `POST /api/jobs/{job_id}/cancel` - Cancel running jobs
+  - `GET /api/jobs/{job_id}/executions` - Execution history
+
+#### ✅ Real-time WebSocket Support
+- **WebSocket Manager** (`app/websocket.py`):
+  - Connection management per user
+  - Real-time job updates
+  - Progress notifications
+  - Admin broadcasts
+- **WebSocket Endpoint**: `ws://localhost:8000/ws/{user_id}`
+
+#### ✅ Spider Migration
+- **Enhanced Propiedades Spider**:
+  - Job ID and configuration support
+  - Dynamic start URLs from Celery task
+  - Comprehensive logging for job tracking
+  - Backward compatibility with existing functionality
+
+#### ✅ Infrastructure Updates
+- **Docker Compose Services**:
+  - Redis service for Celery queue
+  - Celery worker container
+  - Shared volume access to Scrapy project
+  - Environment configuration
+
+### Technical Implementation
+
+#### Database Integration
+- Job executions tracked in `job_executions` table
+- Real-time status updates from Celery tasks
+- Error logging and execution metadata
+- Items scraped count tracking
+
+#### API Testing
+- **Test Script** (`backend/test_api.py`):
+  - Complete API endpoint testing
+  - Authentication flow validation  
+  - Job creation and execution testing
+  - Real-time status monitoring
+  - Error handling verification
+
+## Next Steps: Phase 3 - Next.js Frontend
 
 ### Pending Implementation
-- [ ] Celery integration for async job execution
-- [ ] Scrapy job runner service
-- [ ] Real-time job status tracking
-- [ ] WebSocket support for live updates
-- [ ] Migration of existing spiders to new system
+- [ ] Set up Next.js 14 with TypeScript
+- [ ] Implement authentication context
+- [ ] Create job management dashboard
+- [ ] Build property visualization components
+- [ ] Add real-time job status updates
+- [ ] Implement responsive design
 
 ## File Structure Created
 
