@@ -6,16 +6,18 @@ import { useWebSocket } from '@/hooks/use-websocket'
 import { JobsTab } from './jobs-tab'
 import { PropertiesTab } from './properties-tab'
 import { AdminTab } from './admin-tab'
+import { AnalyticsTab } from './analytics-tab'
 import { 
   LogOut, 
   Briefcase, 
   Home, 
   Shield,
+  BarChart3,
   Wifi,
   WifiOff
 } from 'lucide-react'
 
-type Tab = 'jobs' | 'properties' | 'admin'
+type Tab = 'jobs' | 'properties' | 'analytics' | 'admin'
 
 export function Dashboard() {
   const [activeTab, setActiveTab] = useState<Tab>('jobs')
@@ -25,6 +27,7 @@ export function Dashboard() {
   const tabs = [
     { id: 'jobs' as Tab, label: 'Trabajos de Crawling', icon: Briefcase },
     { id: 'properties' as Tab, label: 'Propiedades', icon: Home },
+    { id: 'analytics' as Tab, label: 'Análisis de Datos', icon: BarChart3 },
     ...(user?.role === 'admin' ? [{ id: 'admin' as Tab, label: 'Administración', icon: Shield }] : [])
   ]
 
@@ -98,6 +101,7 @@ export function Dashboard() {
       <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
         {activeTab === 'jobs' && <JobsTab />}
         {activeTab === 'properties' && <PropertiesTab />}
+        {activeTab === 'analytics' && <AnalyticsTab />}
         {activeTab === 'admin' && user?.role === 'admin' && <AdminTab />}
       </main>
     </div>

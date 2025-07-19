@@ -6,6 +6,7 @@ import { propertiesApi } from '@/lib/api'
 import { Property } from '@/types'
 import { PropertyCard } from '../properties/property-card'
 import { PropertyFilters } from '../properties/property-filters'
+import { ExportButtons } from '../properties/export-buttons'
 import { Loader2, Home } from 'lucide-react'
 
 export function PropertiesTab() {
@@ -59,6 +60,14 @@ export function PropertiesTab() {
         filters={filters}
         onFilterChange={handleFilterChange}
       />
+
+      {/* Export Options */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-medium text-gray-900">Exportar Datos</h3>
+          <ExportButtons filters={filters} />
+        </div>
+      </div>
 
       {/* Properties Grid */}
       {isLoading ? (

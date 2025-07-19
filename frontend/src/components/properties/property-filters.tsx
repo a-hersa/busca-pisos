@@ -7,11 +7,21 @@ interface PropertyFiltersProps {
     poblacion: string
     min_precio: string
     max_precio: string
+    habitaciones: string
+    ascensor: string
+    search: string
+    sort_by: string
+    sort_order: string
   }
   onFilterChange: (filters: Partial<{
     poblacion: string
     min_precio: string
     max_precio: string
+    habitaciones: string
+    ascensor: string
+    search: string
+    sort_by: string
+    sort_order: string
   }>) => void
 }
 
@@ -20,11 +30,17 @@ export function PropertyFilters({ filters, onFilterChange }: PropertyFiltersProp
     onFilterChange({
       poblacion: '',
       min_precio: '',
-      max_precio: ''
+      max_precio: '',
+      habitaciones: '',
+      ascensor: '',
+      search: '',
+      sort_by: 'fecha_crawl',
+      sort_order: 'desc'
     })
   }
 
-  const hasActiveFilters = filters.poblacion || filters.min_precio || filters.max_precio
+  const hasActiveFilters = filters.poblacion || filters.min_precio || filters.max_precio || 
+                          filters.habitaciones || filters.ascensor || filters.search
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
@@ -44,19 +60,20 @@ export function PropertyFilters({ filters, onFilterChange }: PropertyFiltersProp
         )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Location Filter */}
-        <div>
+      {/* Search and Sort */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        {/* Global Search */}
+        <div className="md:col-span-2">
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Población
+            Búsqueda Global
           </label>
           <div className="relative">
             <input
               type="text"
-              value={filters.poblacion}
-              onChange={(e) => onFilterChange({ poblacion: e.target.value })}
+              value={filters.search}
+              onChange={(e) => onFilterChange({ search: e.target.value })}
               className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              placeholder="ej. Barcelona, Madrid..."
+              placeholder="Buscar en nombre, descripción, ubicación..."
             />
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <Search className="h-4 w-4 text-gray-400" />
@@ -64,10 +81,53 @@ export function PropertyFilters({ filters, onFilterChange }: PropertyFiltersProp
           </div>
         </div>
 
+        {/* Sort Options */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Ordenar por
+          </label>
+          <div className="flex space-x-2">
+            <select
+              value={filters.sort_by}
+              onChange={(e) => onFilterChange({ sort_by: e.target.value })}
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="fecha_crawl">Fecha</option>
+              <option value="precio">Precio</option>
+              <option value="metros">Metros</option>
+              <option value="poblacion">Ubicación</option>
+            </select>
+            <select
+              value={filters.sort_order}
+              onChange={(e) => onFilterChange({ sort_order: e.target.value })}
+              className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="desc">↓</option>
+              <option value="asc">↑</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+        {/* Location Filter */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Población
+          </label>
+          <input
+            type="text"
+            value={filters.poblacion}
+            onChange={(e) => onFilterChange({ poblacion: e.target.value })}
+            className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            placeholder="Barcelona..."
+          />
+        </div>
+
         {/* Min Price Filter */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Precio Mínimo (€)
+            Precio Mín. (€)
           </label>
           <input
             type="number"
@@ -82,7 +142,7 @@ export function PropertyFilters({ filters, onFilterChange }: PropertyFiltersProp
         {/* Max Price Filter */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Precio Máximo (€)
+            Precio Máx. (€)
           </label>
           <input
             type="number"
@@ -92,6 +152,40 @@ export function PropertyFilters({ filters, onFilterChange }: PropertyFiltersProp
             placeholder="1000000"
             min="0"
           />
+        </div>
+
+        {/* Rooms Filter */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Habitaciones
+          </label>
+          <select
+            value={filters.habitaciones}
+            onChange={(e) => onFilterChange({ habitaciones: e.target.value })}
+            className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value="">Todas</option>
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4+</option>
+          </select>
+        </div>
+
+        {/* Elevator Filter */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Ascensor
+          </label>
+          <select
+            value={filters.ascensor}
+            onChange={(e) => onFilterChange({ ascensor: e.target.value })}
+            className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value="">Ambos</option>
+            <option value="true">Sí</option>
+            <option value="false">No</option>
+          </select>
         </div>
       </div>
 

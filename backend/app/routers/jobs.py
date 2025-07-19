@@ -29,6 +29,8 @@ async def create_crawl_job(
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session)
 ):
+    from app.services.scheduler import JobScheduler
+    
     new_job = CrawlJob(
         job_name=job_data.job_name,
         spider_name=job_data.spider_name,
@@ -43,9 +45,14 @@ async def create_crawl_job(
     await session.commit()
     await session.refresh(new_job)
     
+    # Schedule the job if it's not manual
+    if new_job.schedule_type != 'manual':
+        await JobScheduler.schedule_job(new_job.job_id, session)
+    
     # Log job creation
     await log_action("job_create", current_user.user_id, "crawl_job", new_job.job_id,
-                    {"job_name": job_data.job_name, "spider_name": job_data.spider_name}, 
+                    {"job_name": job_data.job_name, "spider_name": job_data.spider_name,
+                     "schedule_type": job_data.schedule_type}, 
                     request, session)
     
     return new_job

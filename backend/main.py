@@ -43,6 +43,11 @@ app.include_router(jobs.router, prefix="/api/jobs", tags=["crawl-jobs"])
 app.include_router(properties.router, prefix="/api/properties", tags=["properties"])
 app.include_router(admin.router, prefix="/api/admin", tags=["admin"])
 
+# Import and include additional routers
+from app.routers import export, analytics
+app.include_router(export.router, prefix="/api/export", tags=["export"])
+app.include_router(analytics.router, prefix="/api/analytics", tags=["analytics"])
+
 @app.websocket("/ws/{user_id}")
 async def websocket_endpoint(websocket: WebSocket, user_id: int):
     """

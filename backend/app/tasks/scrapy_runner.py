@@ -55,6 +55,12 @@ def run_spider(self, job_id: int, spider_name: str, start_urls: list, job_config
                 execution_log={"stdout": result.stdout, "stderr": result.stderr}
             ))
             
+            # Send completion notification
+            from app.services.notifications import notification_manager
+            asyncio.run(notification_manager.notify_job_completion(
+                job_id, "completed", items_scraped
+            ))
+            
             return {
                 "status": "completed",
                 "items_scraped": items_scraped,
@@ -68,6 +74,12 @@ def run_spider(self, job_id: int, spider_name: str, start_urls: list, job_config
                 job_id, "failed", self.request.id,
                 error_message=error_message,
                 execution_log={"stdout": result.stdout, "stderr": result.stderr}
+            ))
+            
+            # Send failure notification
+            from app.services.notifications import notification_manager
+            asyncio.run(notification_manager.notify_job_completion(
+                job_id, "failed", 0, error_message
             ))
             
             raise Exception(error_message)
