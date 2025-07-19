@@ -188,3 +188,26 @@ poetry.toml
 .ruff_cache/
 
 # End of https://www.toptal.com/developers/gitignore/api/python
+
+# Scrapy temporary data and outputs
+scrapy/inmobiliario/output/
+scrapy/inmobiliario/crawls/
+scrapy/inmobiliario/backend/
+scrapy/logs/
+scrapy/**/*.log
+
+# Additional database files
+*.sqlite
+*.sqlite3
+
+# Temporary files and directories
+tmp/
+temp/
+*.tmp
+*.temp
+
+# CSV and data exports (project specific)
+*.csv
+*.json
+*.pkl
+*.pickle
