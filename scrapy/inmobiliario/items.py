@@ -19,3 +19,6 @@ class PropertyItem(scrapy.Item):
     url = scrapy.Field()
     descripcion = scrapy.Field()
     estatus = scrapy.Field()
+
+class UrlItem(scrapy.Item):
+    url = scrapy.Field()

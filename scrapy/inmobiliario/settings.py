@@ -110,3 +110,62 @@ AUTOTHROTTLE_DEBUG = True
 REQUEST_FINGERPRINTER_IMPLEMENTATION = "2.7"
 TWISTED_REACTOR = "twisted.internet.asyncioreactor.AsyncioSelectorReactor"
 FEED_EXPORT_ENCODING = "utf-8"
+
+# Configuración del spider
+TARGET_URL_PATTERN = 'https://www.idealista.com/venta-viviendas/'
+EXCLUDED_URL_ENDINGS = [
+    "/municipios",
+    "/mapa",
+]
+EXCLUDED_URL_PATTERNS = [
+    "/con-", 
+    "/pagina-", 
+    "/mapa-",
+    "/news/",
+    "/es/",
+    "/it/", 
+    "/en/", 
+    "/fr/",
+    "/pt/",
+    "/de/",
+    "/ru/",
+    "/uk/",
+    "/ro/",
+    "/nl/",
+    "/pl/",
+    "/se/",
+    "/dk/",
+    "/fi/",
+    "/no/",
+    "/cz/",
+    "/hu/",
+    "/sk/",
+    "/bg/",
+    "/da/",
+    "/sv/",
+    "/zh/",
+    "/el/",
+    "/ca/",
+    "/el/",
+    "/geo/",
+    "/energy/",
+    "/cursos/",
+    "/ayuda/",
+    "/pro/",
+    "/info/",
+    "/data/",
+    "/blog/",
+    "/noticias/",
+    "/contacto/",
+    "/legal/",
+    "/aviso-legal/",
+    "/politica-privacidad/",
+    "/politica-cookies/",
+    "/condiciones-uso/",
+    "/tools/",
+    "inmobiliaria",
+    "inquilinos",
+    "habitaciones",
+]
+
+BROWSERS = ['chrome110']

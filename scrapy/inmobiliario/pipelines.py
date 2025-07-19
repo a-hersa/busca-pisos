@@ -5,11 +5,17 @@
 
 
 # useful for handling different item types with a single interface
-from inmobiliario.items import PropertyItem
+from inmobiliario.items import PropertyItem, UrlItem
 import re
 import psycopg2
+import sqlite3
+import csv
+import os
+import logging
 from scrapy.exceptions import DropItem
-from datetime import datetime
+from datetime import datetime, date
+
+logger = logging.getLogger(__name__)
 
 
 class PropertyItemPipeline:
@@ -204,7 +210,7 @@ class PostgresPipeline:
         )
         self.cursor = self.connection.cursor()
 
-        # Crear la tabla si no existe
+        # Crear las tablas si no existen
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS propiedades (
                 p_id INT PRIMARY KEY,
@@ -222,6 +228,17 @@ class PostgresPipeline:
                 estatus VARCHAR(255)            
             )
         ''')
+        
+        # Crear tabla para municipios/URLs
+        self.cursor.execute('''
+            CREATE TABLE IF NOT EXISTS municipios (
+                id SERIAL PRIMARY KEY,
+                url VARCHAR(500) UNIQUE NOT NULL,
+                fecha_found DATE DEFAULT CURRENT_DATE,
+                spider_name VARCHAR(100),
+                processed BOOLEAN DEFAULT FALSE
+            )
+        ''')
         self.connection.commit()
 
     def close_spider(self, spider):
@@ -230,79 +247,246 @@ class PostgresPipeline:
         self.connection.close()
 
     def process_item(self, item, spider):
-        # Extract p_id from URL and convert to int safely
-        try:
-            p_id_str = item['p_id'].split('/')[-2] if isinstance(item['p_id'], str) else str(item['p_id'])
-            p_id = int(p_id_str)
-        except (ValueError, IndexError, AttributeError):
-            spider.logger.error(f"Could not extract valid p_id from: {item['p_id']}")
-            raise DropItem(f"Invalid p_id: {item['p_id']}")
-        
-        print(f"p_id value being processed: {p_id}")
-
-        # Verificar condiciones para excluir
-        planta = item.get('planta')
-        ascensor = item.get('ascensor')
-
-        # Condición para excluir la propiedad
-        if planta > 3 and ascensor == 0:
-            print(f"Property excluded: {p_id}, Planta: {planta}, Ascensor: {ascensor}")
-            return
-            
-        try:
-            # Verificar si el item ya existe en la base de datos
-            self.cursor.execute("SELECT 1 FROM propiedades WHERE p_id = %s", (p_id,))
-            result = self.cursor.fetchone()
-            # fecha_updated = datetime.today().strftime('%Y-%m-%d')  # Fecha actual
-
-            if result:
-                # Si ya existe el registro, actualizamos el contenido
-                print(f"Item already exists. Updating item: {p_id}")
-
-                self.cursor.execute('''
-                    UPDATE propiedades
-                    SET nombre = %s,
-                        fecha_updated = %s,
-                        precio = %s,
-                        metros = %s,
-                        habitaciones = %s,
-                        planta = %s,
-                        ascensor = %s,
-                        poblacion = %s,
-                        url = %s,
-                        descripcion = %s,
-                        estatus = %s
-                    WHERE p_id = %s
-                ''', (
-                    item.get('nombre'),
-                    item.get('fecha_updated'),
-                    item.get('precio'),
-                    item.get('metros'),
-                    item.get('habitaciones'),
-                    item.get('planta'),
-                    item.get('ascensor'),
-                    item.get('poblacion'),
-                    item.get('url'),
-                    item.get('descripcion'),
-                    item.get('estatus'),
-                    p_id
-                ))
-
-                # Confirmar cambios después de la actualización
-                self.connection.commit()
-                print(f"Item updated successfully: {p_id}")
-
-            else:
-
-                # Insert item into database
+        # Handle UrlItem for municipios spider
+        if isinstance(item, UrlItem):
+            try:
+                url = item['url']
+                spider_name = spider.name
+                
+                # Insert URL into municipios table (ignore if already exists)
                 self.cursor.execute("""
-                    INSERT INTO propiedades (p_id, nombre, fecha_new, fecha_updated, precio, metros, habitaciones, planta, ascensor, poblacion, url, descripcion, estatus)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    INSERT INTO municipios (url, spider_name) 
+                    VALUES (%s, %s) 
+                    ON CONFLICT (url) DO NOTHING
+                """, (url, spider_name))
+                
+                self.connection.commit()
+                spider.logger.debug(f"URL saved to municipios table: {url}")
+                
+            except psycopg2.Error as e:
+                spider.logger.error(f"Database error saving URL: {e}")
+                self.connection.rollback()
+                raise DropItem(f"Database error: {e}")
+            
+            return item
+        
+        # Handle PropertyItem for property spiders
+        elif isinstance(item, PropertyItem):
+            # Extract p_id from URL and convert to int safely
+            try:
+                p_id_str = item['p_id'].split('/')[-2] if isinstance(item['p_id'], str) else str(item['p_id'])
+                p_id = int(p_id_str)
+            except (ValueError, IndexError, AttributeError):
+                spider.logger.error(f"Could not extract valid p_id from: {item['p_id']}")
+                raise DropItem(f"Invalid p_id: {item['p_id']}")
+            
+            print(f"p_id value being processed: {p_id}")
+
+            # Verificar condiciones para excluir
+            planta = item.get('planta')
+            ascensor = item.get('ascensor')
+
+            # Condición para excluir la propiedad
+            if planta > 3 and ascensor == 0:
+                print(f"Property excluded: {p_id}, Planta: {planta}, Ascensor: {ascensor}")
+                return
+                
+            try:
+                # Verificar si el item ya existe en la base de datos
+                self.cursor.execute("SELECT 1 FROM propiedades WHERE p_id = %s", (p_id,))
+                result = self.cursor.fetchone()
+
+                if result:
+                    # Si ya existe el registro, actualizamos el contenido
+                    print(f"Item already exists. Updating item: {p_id}")
+
+                    self.cursor.execute('''
+                        UPDATE propiedades
+                        SET nombre = %s,
+                            fecha_updated = %s,
+                            precio = %s,
+                            metros = %s,
+                            habitaciones = %s,
+                            planta = %s,
+                            ascensor = %s,
+                            poblacion = %s,
+                            url = %s,
+                            descripcion = %s,
+                            estatus = %s
+                        WHERE p_id = %s
+                    ''', (
+                        item.get('nombre'),
+                        item.get('fecha_updated'),
+                        item.get('precio'),
+                        item.get('metros'),
+                        item.get('habitaciones'),
+                        item.get('planta'),
+                        item.get('ascensor'),
+                        item.get('poblacion'),
+                        item.get('url'),
+                        item.get('descripcion'),
+                        item.get('estatus'),
+                        p_id
+                    ))
+
+                    # Confirmar cambios después de la actualización
+                    self.connection.commit()
+                    print(f"Item updated successfully: {p_id}")
+
+                else:
+                    # Insert item into database
+                    self.cursor.execute("""
+                        INSERT INTO propiedades (p_id, nombre, fecha_new, fecha_updated, precio, metros, habitaciones, planta, ascensor, poblacion, url, descripcion, estatus)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    """, (
+                        p_id,
+                        item.get('nombre'),
+                        item.get('fecha_new'),
+                        item.get('fecha_updated'),
+                        item.get('precio'),
+                        item.get('metros'),
+                        item.get('habitaciones'),
+                        item.get('planta'),
+                        item.get('ascensor'),
+                        item.get('poblacion'),
+                        item.get('url'),
+                        item.get('descripcion'),
+                        item.get('estatus')
+                    ))
+
+                    # Confirmar cambios en la base de datos
+                    self.connection.commit()
+                    print(f"Item inserted successfully: {p_id}")
+
+            except psycopg2.Error as e:
+                print(f"Database error: {e}")
+                self.connection.rollback()
+                raise DropItem(f"Database error: {e}")
+            
+            except Exception as e:
+                print(f"Unexpected error: {e}")
+                raise DropItem(f"Unexpected error: {e}")
+
+        return item
+
+class UrlToCSVPipeline:
+    """
+    Pipeline para exportar URLs a un archivo CSV durante la ejecución
+    para no perder datos en caso de interrupción.
+    """
+    
+    def __init__(self):
+        # Create output directory if it doesn't exist
+        os.makedirs('./inmobiliario/output', exist_ok=True)
+        self.csv_file = './inmobiliario/output/municipios.csv'
+        self.file = None
+        self.writer = None
+        self.urls_processed = set()
+
+    def open_spider(self, spider):
+        # Crear el archivo CSV si no existe
+        file_exists = os.path.isfile(self.csv_file)
+        
+        # Si el archivo ya existe, cargar las URLs ya procesadas
+        if file_exists:
+            try:
+                with open(self.csv_file, 'r', newline='', encoding='utf-8') as f:
+                    reader = csv.reader(f)
+                    for row in reader:
+                        if row and len(row) > 0:
+                            self.urls_processed.add(row[0])
+                logger.info(f"Cargadas {len(self.urls_processed)-1} URLs ya procesadas")
+            except Exception as e:
+                logger.error(f"Error al cargar URLs existentes: {str(e)}")
+        
+        # Abrir el archivo en modo append
+        self.file = open(self.csv_file, 'a', newline='', encoding='utf-8')
+        self.writer = csv.writer(self.file)
+        
+        # Si es un archivo nuevo, escribir la cabecera
+        if not file_exists:
+            self.writer.writerow(['url'])
+    
+    def close_spider(self, spider):
+        if self.file:
+            self.file.close()
+        logger.info(f"Total de URLs procesadas: {len(self.urls_processed)}")
+    
+    def process_item(self, item, spider):
+        # Only process UrlItem instances
+        if not isinstance(item, UrlItem):
+            return item
+            
+        url = item['url']
+        
+        # Si la URL no ha sido procesada aún, escribirla en el archivo
+        if url not in self.urls_processed:
+            self.writer.writerow([url])
+            self.file.flush()  # Asegurar que se escribe inmediatamente
+            self.urls_processed.add(url)
+            logger.debug(f"URL guardada: {url}")
+        
+        return item
+    
+class SQLitePipeline:
+
+    def open_spider(self, spider):
+        # Create backend directory if it doesn't exist
+        os.makedirs('./inmobiliario/backend', exist_ok=True)
+        self.conn = sqlite3.connect("./inmobiliario/backend/inmuebles.db")
+        self.cursor = self.conn.cursor()
+        
+        # Create tables if they don't exist
+        self.cursor.execute('''
+            CREATE TABLE IF NOT EXISTS municipios (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                url TEXT UNIQUE
+            )
+        ''')
+        
+        self.cursor.execute('''
+            CREATE TABLE IF NOT EXISTS propiedades (
+                p_id INTEGER PRIMARY KEY,
+                nombre TEXT,
+                fecha_new DATE,
+                fecha_updated DATE,
+                precio INTEGER,
+                metros INTEGER,
+                habitaciones INTEGER,
+                planta INTEGER,
+                ascensor INTEGER,
+                poblacion TEXT,
+                url TEXT,
+                descripcion TEXT
+            )
+        ''')
+        self.conn.commit()
+
+    def close_spider(self, spider):
+        self.conn.commit()
+        self.conn.close()
+
+    def process_item(self, item, spider):
+        if isinstance(item, UrlItem) and spider.name == "municipios":
+            try:
+                self.cursor.execute("""
+                    INSERT OR IGNORE INTO municipios (url) VALUES (?)
+                """, (item['url'],))
+            except sqlite3.Error as e:
+                logger.error(f"SQLite error inserting URL: {e}")
+                
+        elif isinstance(item, PropertyItem):
+            try:
+                self.cursor.execute("""
+                    INSERT OR REPLACE INTO propiedades (
+                        p_id, nombre, fecha_new, fecha_updated, precio, metros, habitaciones,
+                        planta, ascensor, poblacion, url, descripcion
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
-                    p_id,
+                    item.get('p_id'),
                     item.get('nombre'),
-                    item.get('fecha_new'),
-                    item.get('fecha_updated'),
+                    date.today(),                # fecha_new
+                    date.today(),                # fecha_updated
                     item.get('precio'),
                     item.get('metros'),
                     item.get('habitaciones'),
@@ -311,20 +495,8 @@ class PostgresPipeline:
                     item.get('poblacion'),
                     item.get('url'),
                     item.get('descripcion'),
-                    item.get('estatus')
                 ))
-
-                # Confirmar cambios en la base de datos
-                self.connection.commit()
-                print(f"Item inserted successfully: {p_id}")
-
-        except psycopg2.Error as e:
-            print(f"Database error: {e}")
-            self.connection.rollback()
-            raise DropItem(f"Database error: {e}")
-        
-        except Exception as e:
-            print(f"Unexpected error: {e}")
-            raise DropItem(f"Unexpected error: {e}")
+            except sqlite3.Error as e:
+                logger.error(f"SQLite error inserting property: {e}")
 
         return item
