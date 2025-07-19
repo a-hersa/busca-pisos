@@ -59,6 +59,12 @@ services:
       - SECRET_KEY=${SECRET_KEY:-dev-secret-key-change-in-production}
       - REDIS_URL=redis://redis:6379/0
       - TZ=Europe/Madrid
+      - SMTP_HOST=smtp.gmail.com
+      - SMTP_PORT=587
+      - SMTP_USERNAME=your-email@gmail.com
+      - SMTP_PASSWORD=your-app-password
+      - SMTP_FROM_EMAIL=your-email@gmail.com
+      - SMTP_FROM_NAME=Inmobiliario Tools
     networks:
       - inmobiliario_network
     ports:

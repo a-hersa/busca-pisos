@@ -81,9 +81,9 @@ def verify_turnstile(token):
 def get_db_connection():
     # conn = psycopg2.connect(DATABASE_URL)
     conn = psycopg2.connect(
-        host='postgres',
+        host=os.getenv("POSTGRES_HOST", "postgres"),
         port='5432',
-        dbname='inmobiliario_db',
+        dbname=os.getenv("POSTGRES_DB", "inmobiliario_db"),
         user= f'{os.getenv("POSTGRES_USER")}',
         password= f'{os.getenv("POSTGRES_PASSWORD")}'
     )
