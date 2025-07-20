@@ -7,8 +7,12 @@
 docker-compose.override.yml
 docker-compose.local.yml
 backup.compose.yml
+
+# Claude AI
 .claude/
 CLAUDE.md
+IMPLEMENTATION-STATUS.md
+ROADMAP-NEXTJS-FASTAPI.md
 
 # Calculadora de rentabilidad
 test*.ipynb
