@@ -1,14 +1,15 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
 from typing import List
+from pydantic import BaseModel
 
 from app.database import get_async_session
 from app.models.user import User
 from app.models.audit_log import AuditLog
 from app.models.crawl_job import CrawlJob
 from app.schemas.user import UserResponse
-from app.core.deps import get_current_admin_user
+from app.core.deps import get_current_admin_user, log_action
 
 router = APIRouter()
 
@@ -69,3 +70,84 @@ async def get_system_stats(
         "total_jobs": total_jobs,
         "active_jobs": active_jobs
     }
+
+class UserActivationRequest(BaseModel):
+    user_id: int
+    is_active: bool
+
+@router.post("/users/{user_id}/activate")
+async def activate_user(
+    user_id: int,
+    request: Request,
+    current_user: User = Depends(get_current_admin_user),
+    session: AsyncSession = Depends(get_async_session)
+):
+    # Get the user to activate
+    result = await session.execute(select(User).where(User.user_id == user_id))
+    user = result.scalar_one_or_none()
+    
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    
+    # Don't allow deactivating the first admin user
+    if user.role == 'admin' and user.user_id == 1:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot deactivate the first admin user"
+        )
+    
+    # Activate the user
+    user.is_active = True
+    await session.commit()
+    await session.refresh(user)
+    
+    # Log the action
+    await log_action("user_activated", user.user_id, "user", current_user.user_id, 
+                    {"activated_user": user.username}, request, session)
+    
+    return {"message": f"User {user.username} has been activated", "user": user}
+
+@router.post("/users/{user_id}/deactivate")
+async def deactivate_user(
+    user_id: int,
+    request: Request,
+    current_user: User = Depends(get_current_admin_user),
+    session: AsyncSession = Depends(get_async_session)
+):
+    # Get the user to deactivate
+    result = await session.execute(select(User).where(User.user_id == user_id))
+    user = result.scalar_one_or_none()
+    
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    
+    # Don't allow deactivating the first admin user
+    if user.role == 'admin' and user.user_id == 1:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot deactivate the first admin user"
+        )
+    
+    # Don't allow user to deactivate themselves
+    if user.user_id == current_user.user_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot deactivate your own account"
+        )
+    
+    # Deactivate the user
+    user.is_active = False
+    await session.commit()
+    await session.refresh(user)
+    
+    # Log the action
+    await log_action("user_deactivated", user.user_id, "user", current_user.user_id, 
+                    {"deactivated_user": user.username}, request, session)
+    
+    return {"message": f"User {user.username} has been deactivated", "user": user}

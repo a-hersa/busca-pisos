@@ -16,7 +16,12 @@ class User(Base):
     role = Column(String(20), default="user", nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     last_login = Column(DateTime(timezone=True))
-    is_active = Column(Boolean, default=True)
+    is_active = Column(Boolean, default=False)
+    
+    # Email confirmation fields
+    email_confirmed = Column(Boolean, default=False, nullable=False)
+    email_confirmation_token = Column(String(255), nullable=True, index=True)
+    email_confirmation_expires = Column(DateTime(timezone=True), nullable=True)
     
     # Relationships
     sessions = relationship("UserSession", back_populates="user", cascade="all, delete-orphan")

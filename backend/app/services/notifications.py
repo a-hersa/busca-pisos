@@ -228,6 +228,72 @@ class EmailService:
         )
         
         return self.send_email([user_email], subject, html_content)
+    
+    def send_email_confirmation(self, user_email: str, username: str, confirmation_token: str) -> bool:
+        """
+        Send email confirmation notification
+        """
+        subject = "Confirma tu correo electrónico - Inmobiliario Tools"
+        
+        confirmation_url = f"{os.getenv('FRONTEND_URL', 'http://localhost:3000')}/confirm-email?token={confirmation_token}"
+        
+        html_template = """
+        <html>
+            <body style="font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f5f5f5;">
+                <div style="max-width: 600px; margin: 0 auto; background-color: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    <div style="text-align: center; margin-bottom: 30px;">
+                        <h1 style="color: #3b82f6; margin: 0;">✉️ Confirma tu Email</h1>
+                    </div>
+                    
+                    <h2 style="color: #333; margin-bottom: 20px;">¡Hola {{ username }}!</h2>
+                    
+                    <p style="color: #666; line-height: 1.5; margin-bottom: 25px;">
+                        Gracias por registrarte en Inmobiliario Tools. Para completar tu registro 
+                        y activar tu cuenta, necesitas confirmar tu dirección de correo electrónico.
+                    </p>
+                    
+                    <div style="text-align: center; margin: 30px 0;">
+                        <a href="{{ confirmation_url }}" style="background-color: #3b82f6; color: white; padding: 15px 30px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">
+                            Confirmar Email
+                        </a>
+                    </div>
+                    
+                    <p style="color: #666; line-height: 1.5; font-size: 14px; margin-bottom: 20px;">
+                        Si no puedes hacer clic en el botón, copia y pega este enlace en tu navegador:
+                    </p>
+                    
+                    <p style="color: #3b82f6; word-break: break-all; font-size: 14px; margin-bottom: 25px;">
+                        {{ confirmation_url }}
+                    </p>
+                    
+                    <div style="background-color: #fef2f2; padding: 15px; border-radius: 6px; margin-bottom: 25px;">
+                        <p style="margin: 0; color: #dc2626; font-size: 14px;">
+                            <strong>Importante:</strong> Este enlace expirará en 24 horas. 
+                            Si no confirmas tu email dentro de este período, deberás solicitar un nuevo enlace.
+                        </p>
+                    </div>
+                    
+                    <p style="color: #666; line-height: 1.5; font-size: 14px;">
+                        Si no te registraste en Inmobiliario Tools, puedes ignorar este email.
+                    </p>
+                    
+                    <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
+                    <p style="color: #999; font-size: 12px; text-align: center; margin: 0;">
+                        Inmobiliario Tools - {{ timestamp }}
+                    </p>
+                </div>
+            </body>
+        </html>
+        """
+        
+        template = Template(html_template)
+        html_content = template.render(
+            username=username,
+            confirmation_url=confirmation_url,
+            timestamp=datetime.now().strftime("%d/%m/%Y %H:%M")
+        )
+        
+        return self.send_email([user_email], subject, html_content)
 
 class NotificationManager:
     """
