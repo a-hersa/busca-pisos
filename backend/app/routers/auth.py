@@ -77,13 +77,18 @@ async def register(
         from app.services.notifications import EmailService
         email_service = EmailService()
         try:
-            email_service.send_email_confirmation(
+            print(f"Sending confirmation email to {new_user.email}")
+            success = email_service.send_email_confirmation(
                 user_email=new_user.email,
                 username=new_user.username,
                 confirmation_token=confirmation_token
             )
+            if success:
+                print(f"Confirmation email sent successfully to {new_user.email}")
+            else:
+                print(f"Failed to send confirmation email to {new_user.email}")
         except Exception as e:
-            print(f"Failed to send confirmation email: {e}")
+            print(f"Exception sending confirmation email: {e}")
             # Don't fail registration if email fails
     
     # Log registration
@@ -258,3 +263,32 @@ async def resend_confirmation(
                     {"email": user.email}, request, session)
     
     return {"message": "Confirmation email sent"}
+
+@router.post("/test-email")
+async def test_email_configuration(
+    request: Request,
+    session: AsyncSession = Depends(get_async_session)
+):
+    """
+    Test endpoint to verify email configuration
+    """
+    from app.services.notifications import EmailService
+    
+    email_service = EmailService()
+    
+    try:
+        # Test email configuration
+        test_email = "test@example.com"  # Replace with actual test email
+        success = email_service.send_email(
+            to_emails=[test_email],
+            subject="Test Email - Inmobiliario Tools",
+            html_content="<h1>Email Configuration Test</h1><p>If you receive this email, the SMTP configuration is working correctly.</p>"
+        )
+        
+        if success:
+            return {"message": "Test email sent successfully", "success": True}
+        else:
+            return {"message": "Failed to send test email", "success": False}
+            
+    except Exception as e:
+        return {"message": f"Email configuration error: {str(e)}", "success": False, "error": str(e)}

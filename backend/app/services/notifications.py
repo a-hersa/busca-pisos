@@ -16,21 +16,28 @@ class EmailService:
     """
     
     def __init__(self):
-        self.smtp_server = os.getenv("SMTP_SERVER", "smtp.gmail.com")
+        self.smtp_server = os.getenv("SMTP_HOST", "smtp.gmail.com")
         self.smtp_port = int(os.getenv("SMTP_PORT", "587"))
-        self.email_user = os.getenv("EMAIL_USER")
-        self.email_password = os.getenv("EMAIL_PASSWORD")
-        self.email_from = os.getenv("EMAIL_FROM", self.email_user)
+        self.email_user = os.getenv("SMTP_USERNAME")
+        self.email_password = os.getenv("SMTP_PASSWORD")
+        self.email_from = os.getenv("SMTP_FROM_EMAIL", self.email_user)
         
     def _create_smtp_connection(self):
         """Create SMTP connection"""
         if not self.email_user or not self.email_password:
+            print(f"Email configuration missing - User: {bool(self.email_user)}, Password: {bool(self.email_password)}")
             raise ValueError("Email credentials not configured")
-            
-        server = smtplib.SMTP(self.smtp_server, self.smtp_port)
-        server.starttls()
-        server.login(self.email_user, self.email_password)
-        return server
+        
+        print(f"Attempting SMTP connection to {self.smtp_server}:{self.smtp_port}")
+        try:
+            server = smtplib.SMTP(self.smtp_server, self.smtp_port)
+            server.starttls()
+            server.login(self.email_user, self.email_password)
+            print("SMTP connection successful")
+            return server
+        except Exception as e:
+            print(f"SMTP connection failed: {e}")
+            raise
     
     def send_email(
         self, 
@@ -235,7 +242,8 @@ class EmailService:
         """
         subject = "Confirma tu correo electrónico - Inmobiliario Tools"
         
-        confirmation_url = f"{os.getenv('FRONTEND_URL', 'http://localhost:3000')}/confirm-email?token={confirmation_token}"
+        frontend_url = os.getenv("NEXT_PUBLIC_API_URL", "http://localhost:3000").replace(":8001", ":3000")
+        confirmation_url = f"{frontend_url}/confirm-email?token={confirmation_token}"
         
         html_template = """
         <html>
