@@ -27,7 +27,7 @@ export function useWebSocket(): UseWebSocketReturn {
   useEffect(() => {
     if (!user) return
 
-    const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8000'
+    const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8001'
     const wsUrl = `${WS_URL}/ws/${user.user_id}`
 
     try {

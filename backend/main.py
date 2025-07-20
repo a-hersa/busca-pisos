@@ -75,3 +75,18 @@ async def root():
 @app.get("/health")
 async def health_check():
     return {"status": "healthy"}
+
+@app.get("/debug-auth")
+async def debug_auth():
+    """Debug endpoint to check current auth status"""
+    from app.core.deps import get_current_user
+    from app.database import get_async_session
+    from fastapi import Depends
+    
+    try:
+        # This will require auth, which is what we want to test
+        current_user = Depends(get_current_user)
+        session = Depends(get_async_session)
+        return {"message": "This endpoint requires auth - if you see this, auth is working"}
+    except Exception as e:
+        return {"error": str(e), "message": "Auth not working"}

@@ -17,44 +17,52 @@ redis_client = redis.Redis.from_url(os.getenv("REDIS_URL", "redis://localhost:63
 
 router = APIRouter()
 
+@router.get("/debug-all")
+async def debug_all_jobs(session: AsyncSession = Depends(get_async_session)):
+    """Debug endpoint to see all jobs in database"""
+    result = await session.execute(select(CrawlJob))
+    jobs = result.scalars().all()
+    
+    return {
+        "total_jobs": len(jobs),
+        "jobs": [{"job_id": job.job_id, "job_name": job.job_name, "created_by": job.created_by, "status": job.status} for job in jobs]
+    }
+
 @router.get("/", response_model=List[CrawlJobResponse])
 async def list_user_jobs(
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session)
 ):
-    # Check cache first
-    cache_key = f"user_jobs:{current_user.user_id}"
-    try:
-        cached_jobs = redis_client.get(cache_key)
-        if cached_jobs:
-            jobs_data = json.loads(cached_jobs)
-            return [CrawlJobResponse(**job) for job in jobs_data]
-    except:
-        pass  # If cache fails, continue with database query
+    # FORCE FRESH DATA - NO CACHING WHATSOEVER
+    print(f"🔍 API CALL: User {current_user.user_id} ({current_user.username}) requesting jobs")
     
-    # Query database
+    # Direct database query with explicit refresh
+    await session.commit()  # Ensure any pending transactions are committed
+    
     result = await session.execute(
         select(CrawlJob).where(CrawlJob.created_by == current_user.user_id)
     )
     jobs = result.scalars().all()
     
-    # Cache the result for 30 seconds
-    try:
-        jobs_data = [job.__dict__ for job in jobs]
-        # Remove SQLAlchemy internal attributes
-        clean_jobs = []
-        for job_dict in jobs_data:
-            clean_job = {k: v for k, v in job_dict.items() if not k.startswith('_')}
-            # Convert datetime objects to strings for JSON serialization
-            for key, value in clean_job.items():
-                if hasattr(value, 'isoformat'):
-                    clean_job[key] = value.isoformat()
-            clean_jobs.append(clean_job)
-        
-        redis_client.setex(cache_key, 30, json.dumps(clean_jobs))
-    except:
-        pass  # If caching fails, don't break the response
+    print(f"📊 QUERY RESULT: Found {len(jobs)} jobs for user {current_user.user_id}")
     
+    # Log each job found
+    job_list = []
+    for job in jobs:
+        job_data = {
+            "job_id": job.job_id,
+            "job_name": job.job_name,
+            "status": job.status,
+            "created_by": job.created_by,
+            "spider_name": job.spider_name,
+            "schedule_type": job.schedule_type,
+            "created_at": job.created_at.isoformat() if job.created_at else None,
+            "updated_at": job.updated_at.isoformat() if job.updated_at else None
+        }
+        job_list.append(job_data)
+        print(f"✅ Job: {job.job_id} - {job.job_name} ({job.status})")
+    
+    print(f"🚀 SENDING RESPONSE: {len(job_list)} jobs")
     return jobs
 
 @router.post("/", response_model=CrawlJobResponse)
@@ -64,6 +72,9 @@ async def create_crawl_job(
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session)
 ):
+    print(f"🆕 CREATING JOB: User {current_user.user_id} ({current_user.username})")
+    print(f"📝 JOB DATA: {job_data}")
+    
     new_job = CrawlJob(
         job_name=job_data.job_name,
         spider_name=job_data.spider_name,
@@ -78,11 +89,26 @@ async def create_crawl_job(
     await session.commit()
     await session.refresh(new_job)
     
-    # Invalidate cache
+    print(f"✅ JOB CREATED: ID={new_job.job_id}, Name='{new_job.job_name}', CreatedBy={new_job.created_by}")
+    print(f"🎯 JOB DETAILS: Status={new_job.status}, Spider={new_job.spider_name}")
+    
+    # Invalidate cache immediately
     try:
         redis_client.delete(f"user_jobs:{current_user.user_id}")
     except:
         pass
+    
+    # Send real-time WebSocket notification
+    try:
+        from app.websocket import manager
+        await manager.send_personal_message({
+            "type": "job_created",
+            "job_id": new_job.job_id,
+            "job_name": new_job.job_name,
+            "status": new_job.status
+        }, current_user.user_id)
+    except:
+        pass  # Don't fail if WebSocket fails
     
     # Log job creation asynchronously (non-blocking)
     await log_action("job_create", current_user.user_id, "crawl_job", new_job.job_id,
@@ -222,6 +248,24 @@ async def run_crawl_job(
     
     try:
         result = await JobRunnerService.execute_job(job_id, session)
+        
+        # Send real-time WebSocket notification
+        try:
+            from app.websocket import manager
+            await manager.send_personal_message({
+                "type": "job_started",
+                "job_id": job.job_id,
+                "job_name": job.job_name,
+                "task_id": result["task_id"]
+            }, current_user.user_id)
+        except:
+            pass
+        
+        # Invalidate cache for instant updates
+        try:
+            redis_client.delete(f"user_jobs:{current_user.user_id}")
+        except:
+            pass
         
         # Log job execution
         await log_action("job_run", current_user.user_id, "crawl_job", job.job_id,

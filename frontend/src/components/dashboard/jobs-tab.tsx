@@ -1,30 +1,37 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { jobsApi } from '@/lib/api'
 import { CrawlJob, CrawlJobCreate } from '@/types'
 import { JobCard } from '../jobs/job-card'
 import { CreateJobModal } from '../jobs/create-job-modal'
 import { JobDetailsModal } from '../jobs/job-details-modal'
-import { Plus, Loader2, RefreshCw, Briefcase } from 'lucide-react'
+import { useWebSocket } from '@/hooks/use-websocket'
+import { Plus, Loader2, RefreshCw, Briefcase, Wifi, WifiOff } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export function JobsTab() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [selectedJobId, setSelectedJobId] = useState<number | null>(null)
   const queryClient = useQueryClient()
+  const { isConnected, lastMessage } = useWebSocket()
 
   const { data: jobs, isLoading, error, refetch } = useQuery({
     queryKey: ['jobs'],
     queryFn: jobsApi.list,
-    refetchInterval: 5000, // Refetch every 5 seconds for real-time updates
+    refetchInterval: 1000, // Very frequent polling
+    staleTime: 0, // Always treat data as stale
+    gcTime: 0, // Don't cache data (renamed from cacheTime in newer versions)
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
+    retry: false, // Don't retry failed requests
   })
 
   const createJobMutation = useMutation({
     mutationFn: (data: CrawlJobCreate) => jobsApi.create(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['jobs'] })
+    onSuccess: async () => {
+      await refetch() // Force immediate refetch
       setIsCreateModalOpen(false)
       toast.success('Trabajo creado exitosamente')
     },
@@ -36,8 +43,8 @@ export function JobsTab() {
 
   const deleteJobMutation = useMutation({
     mutationFn: (jobId: number) => jobsApi.delete(jobId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['jobs'] })
+    onSuccess: async () => {
+      await refetch() // Force immediate refetch
       toast.success('Trabajo eliminado')
     },
     onError: (error: any) => {
@@ -48,8 +55,8 @@ export function JobsTab() {
 
   const runJobMutation = useMutation({
     mutationFn: (jobId: number) => jobsApi.run(jobId),
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['jobs'] })
+    onSuccess: async (data) => {
+      await refetch() // Force immediate refetch
       toast.success(`Trabajo iniciado (Task ID: ${data.task_id})`)
     },
     onError: (error: any) => {
@@ -60,8 +67,8 @@ export function JobsTab() {
 
   const cancelJobMutation = useMutation({
     mutationFn: (jobId: number) => jobsApi.cancel(jobId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['jobs'] })
+    onSuccess: async () => {
+      await refetch() // Force immediate refetch
       toast.success('Trabajo cancelado')
     },
     onError: (error: any) => {
@@ -69,6 +76,20 @@ export function JobsTab() {
       toast.error(message)
     },
   })
+
+  // Handle WebSocket messages for real-time updates
+  useEffect(() => {
+    if (lastMessage) {
+      console.log('WebSocket message received:', lastMessage)
+      
+      // Refetch jobs on any job-related WebSocket message
+      if (lastMessage.type === 'job_created' || 
+          lastMessage.type === 'job_started' || 
+          lastMessage.type === 'job_update') {
+        refetch()
+      }
+    }
+  }, [lastMessage, refetch])
 
   if (error) {
     return (
@@ -95,6 +116,20 @@ export function JobsTab() {
           </p>
         </div>
         <div className="flex space-x-3">
+          {/* WebSocket Connection Indicator */}
+          <div className="flex items-center space-x-2 px-3 py-2 text-sm">
+            {isConnected ? (
+              <>
+                <Wifi className="h-4 w-4 text-green-500" />
+                <span className="text-green-600">En tiempo real</span>
+              </>
+            ) : (
+              <>
+                <WifiOff className="h-4 w-4 text-gray-400" />
+                <span className="text-gray-500">Desconectado</span>
+              </>
+            )}
+          </div>
           <button
             onClick={() => refetch()}
             disabled={isLoading}

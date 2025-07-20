@@ -12,8 +12,8 @@ class CacheMiddleware(BaseHTTPMiddleware):
         self.cache_ttl = cache_ttl
         self.cacheable_paths = [
             "/api/properties",
-            "/api/analytics",
-            "/api/jobs"
+            "/api/analytics"
+            # Removed "/api/jobs" for instant updates
         ]
     
     async def dispatch(self, request: Request, call_next):
