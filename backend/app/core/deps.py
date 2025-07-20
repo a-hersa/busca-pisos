@@ -8,7 +8,7 @@ from app.models.user import User
 from app.models.audit_log import AuditLog
 from app.core.security import verify_token
 
-security = HTTPBearer()
+security = HTTPBearer(auto_error=True)
 
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
