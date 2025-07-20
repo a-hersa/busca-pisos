@@ -21,7 +21,7 @@ def run_spider(self, job_id: int, spider_name: str, start_urls: list, job_config
         # Build scrapy command
         scrapy_cmd = [
             sys.executable, "-m", "scrapy", "crawl", spider_name,
-            "-s", f"START_URLS={','.join(start_urls)}",
+            "-s", f"START_URLS={'|||'.join(start_urls)}",
             "-s", f"JOB_ID={job_id}",
             "-s", f"JOB_CONFIG={json.dumps(job_config)}"
         ]
@@ -106,10 +106,13 @@ def parse_scrapy_output(output: str) -> int:
     for line in lines:
         if 'item_scraped_count' in line:
             try:
-                # Extract number from scrapy stats
-                parts = line.split(':')
-                if len(parts) > 1:
-                    return int(parts[1].strip().rstrip(','))
+                # Extract number from scrapy stats - handle different formats
+                if ':' in line:
+                    parts = line.split(':')
+                    if len(parts) > 1:
+                        # Handle format like "'item_scraped_count': 8,"
+                        value_part = parts[-1].strip().rstrip(',').strip()
+                        return int(value_part)
             except (ValueError, IndexError):
                 continue
     return 0

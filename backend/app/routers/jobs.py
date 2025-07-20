@@ -2,12 +2,18 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import List
+import redis
+import json
+import os
 
 from app.database import get_async_session
 from app.models.user import User
 from app.models.crawl_job import CrawlJob
 from app.schemas.crawl_job import CrawlJobCreate, CrawlJobResponse, CrawlJobUpdate
 from app.core.deps import get_current_user, log_action
+
+# Redis client for caching
+redis_client = redis.Redis.from_url(os.getenv("REDIS_URL", "redis://localhost:6379/0"))
 
 router = APIRouter()
 
@@ -16,10 +22,39 @@ async def list_user_jobs(
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session)
 ):
+    # Check cache first
+    cache_key = f"user_jobs:{current_user.user_id}"
+    try:
+        cached_jobs = redis_client.get(cache_key)
+        if cached_jobs:
+            jobs_data = json.loads(cached_jobs)
+            return [CrawlJobResponse(**job) for job in jobs_data]
+    except:
+        pass  # If cache fails, continue with database query
+    
+    # Query database
     result = await session.execute(
         select(CrawlJob).where(CrawlJob.created_by == current_user.user_id)
     )
     jobs = result.scalars().all()
+    
+    # Cache the result for 30 seconds
+    try:
+        jobs_data = [job.__dict__ for job in jobs]
+        # Remove SQLAlchemy internal attributes
+        clean_jobs = []
+        for job_dict in jobs_data:
+            clean_job = {k: v for k, v in job_dict.items() if not k.startswith('_')}
+            # Convert datetime objects to strings for JSON serialization
+            for key, value in clean_job.items():
+                if hasattr(value, 'isoformat'):
+                    clean_job[key] = value.isoformat()
+            clean_jobs.append(clean_job)
+        
+        redis_client.setex(cache_key, 30, json.dumps(clean_jobs))
+    except:
+        pass  # If caching fails, don't break the response
+    
     return jobs
 
 @router.post("/", response_model=CrawlJobResponse)
@@ -29,8 +64,6 @@ async def create_crawl_job(
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session)
 ):
-    from app.services.scheduler import JobScheduler
-    
     new_job = CrawlJob(
         job_name=job_data.job_name,
         spider_name=job_data.spider_name,
@@ -45,15 +78,22 @@ async def create_crawl_job(
     await session.commit()
     await session.refresh(new_job)
     
-    # Schedule the job if it's not manual
-    if new_job.schedule_type != 'manual':
-        await JobScheduler.schedule_job(new_job.job_id, session)
+    # Invalidate cache
+    try:
+        redis_client.delete(f"user_jobs:{current_user.user_id}")
+    except:
+        pass
     
-    # Log job creation
+    # Log job creation asynchronously (non-blocking)
     await log_action("job_create", current_user.user_id, "crawl_job", new_job.job_id,
                     {"job_name": job_data.job_name, "spider_name": job_data.spider_name,
                      "schedule_type": job_data.schedule_type}, 
                     request, session)
+    
+    # Schedule job asynchronously for non-manual jobs
+    if new_job.schedule_type != 'manual':
+        from app.tasks.job_scheduler import schedule_job_async
+        schedule_job_async.delay(new_job.job_id)
     
     return new_job
 
@@ -109,6 +149,12 @@ async def update_crawl_job(
     await session.commit()
     await session.refresh(job)
     
+    # Invalidate cache
+    try:
+        redis_client.delete(f"user_jobs:{current_user.user_id}")
+    except:
+        pass
+    
     # Log job update
     await log_action("job_update", current_user.user_id, "crawl_job", job.job_id,
                     {"updated_fields": list(update_data.keys())}, request, session)
@@ -138,6 +184,12 @@ async def delete_crawl_job(
     
     await session.delete(job)
     await session.commit()
+    
+    # Invalidate cache
+    try:
+        redis_client.delete(f"user_jobs:{current_user.user_id}")
+    except:
+        pass
     
     # Log job deletion
     await log_action("job_delete", current_user.user_id, "crawl_job", job_id,

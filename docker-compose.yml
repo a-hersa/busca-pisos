@@ -1,4 +1,5 @@
-version: '3.8'
+# All environment variables are defined in the .env file
+# Copy .env.example to .env and customize the values as needed
 
 services:
   # PostgreSQL Database with performance optimizations
@@ -7,9 +8,9 @@ services:
     container_name: inmobiliario-postgres
     restart: always
     environment:
-      - POSTGRES_DB=${POSTGRES_DB:-inmobiliario_db}
-      - POSTGRES_USER=${POSTGRES_USER:-inmobiliario_user}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-inmobiliario_pass}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - TZ=Europe/Madrid
     volumes:
       - postgres_data_new:/var/lib/postgresql/data
@@ -31,7 +32,7 @@ services:
       -c random_page_cost=1.1
       -c effective_io_concurrency=200
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-inmobiliario_user} -d ${POSTGRES_DB:-inmobiliario_db}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -71,19 +72,22 @@ services:
     container_name: inmobiliario-backend
     restart: always
     environment:
-      - POSTGRES_DB=${POSTGRES_DB:-inmobiliario_db}
-      - POSTGRES_USER=${POSTGRES_USER:-inmobiliario_user}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-inmobiliario_pass}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_HOST=postgres
-      - SECRET_KEY=${SECRET_KEY:-dev-secret-key-change-in-production}
+      - SECRET_KEY=${SECRET_KEY}
       - REDIS_URL=redis://redis:6379/0
       - TZ=Europe/Madrid
-      - SMTP_HOST=smtp.gmail.com
-      - SMTP_PORT=587
-      - SMTP_USERNAME=your-email@gmail.com
-      - SMTP_PASSWORD=your-app-password
-      - SMTP_FROM_EMAIL=your-email@gmail.com
-      - SMTP_FROM_NAME=Inmobiliario Tools
+      - SCRAPINGANT_API_KEY=${SCRAPINGANT_API_KEY}
+      - TURNSTILE_SITE_KEY=${TURNSTILE_SITE_KEY}
+      - TURNSTILE_SECRET_KEY=${TURNSTILE_SECRET_KEY}
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_USERNAME=${SMTP_USERNAME}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - SMTP_FROM_EMAIL=${SMTP_FROM_EMAIL}
+      - SMTP_FROM_NAME=${SMTP_FROM_NAME}
     networks:
       - inmobiliario_network
     ports:
@@ -102,13 +106,14 @@ services:
     container_name: inmobiliario-celery-worker
     restart: always
     environment:
-      - POSTGRES_DB=${POSTGRES_DB:-inmobiliario_db}
-      - POSTGRES_USER=${POSTGRES_USER:-inmobiliario_user}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-inmobiliario_pass}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_HOST=postgres
-      - SECRET_KEY=${SECRET_KEY:-dev-secret-key-change-in-production}
+      - SECRET_KEY=${SECRET_KEY}
       - REDIS_URL=redis://redis:6379/0
       - TZ=Europe/Madrid
+      - SCRAPINGANT_API_KEY=${SCRAPINGANT_API_KEY}
     networks:
       - inmobiliario_network
     depends_on:
@@ -116,7 +121,11 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: celery -A app.celery_app worker --loglevel=info --concurrency=4
+    command: >
+      celery -A app.celery_app worker
+      --loglevel=info
+      --concurrency=4
+      --queues=celery,scrapy_queue,scheduler_queue
 
   # Celery Beat Scheduler
   celery-beat:
@@ -126,11 +135,11 @@ services:
     container_name: inmobiliario-celery-beat
     restart: always
     environment:
-      - POSTGRES_DB=${POSTGRES_DB:-inmobiliario_db}
-      - POSTGRES_USER=${POSTGRES_USER:-inmobiliario_user}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-inmobiliario_pass}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_HOST=postgres
-      - SECRET_KEY=${SECRET_KEY:-dev-secret-key-change-in-production}
+      - SECRET_KEY=${SECRET_KEY}
       - REDIS_URL=redis://redis:6379/0
       - TZ=Europe/Madrid
     networks:
@@ -150,8 +159,8 @@ services:
     container_name: inmobiliario-frontend
     restart: always
     environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:8001
-      - NEXT_PUBLIC_WS_URL=ws://localhost:8001
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+      - NEXT_PUBLIC_WS_URL=${NEXT_PUBLIC_WS_URL}
       - TZ=Europe/Madrid
     networks:
       - inmobiliario_network

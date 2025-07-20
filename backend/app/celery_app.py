@@ -12,7 +12,12 @@ celery_app = Celery(
     "inmobiliario_tasks",
     broker=REDIS_URL,
     backend=REDIS_URL,
-    include=["app.tasks.scrapy_runner", "app.tasks.notifications"]
+    include=[
+        "app.tasks.scrapy_runner", 
+        "app.tasks.notifications",
+        "app.tasks.audit_logger",
+        "app.tasks.job_scheduler"
+    ]
 )
 
 # Celery configuration
@@ -27,6 +32,8 @@ celery_app.conf.update(
         "app.tasks.scrapy_runner.run_spider": {"queue": "scrapy_queue"},
         "app.services.scheduler.check_scheduled_jobs": {"queue": "scheduler_queue"},
     },
+    worker_prefetch_multiplier=1,
+    task_acks_late=True,
     beat_schedule={
         'check-scheduled-jobs': {
             'task': 'app.services.scheduler.check_scheduled_jobs',

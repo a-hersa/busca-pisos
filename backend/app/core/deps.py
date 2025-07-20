@@ -47,14 +47,18 @@ async def log_action(
     request: Request = None,
     session: AsyncSession = Depends(get_async_session)
 ):
-    audit_log = AuditLog(
-        user_id=user_id,
-        action=action,
-        resource_type=resource_type,
-        resource_id=resource_id,
-        details=details,
-        ip_address=request.client.host if request else None,
-        user_agent=request.headers.get("user-agent") if request else None
-    )
-    session.add(audit_log)
-    await session.commit()
+    # Queue audit logging asynchronously to avoid blocking the response
+    from app.tasks.audit_logger import log_audit_async
+    
+    audit_data = {
+        "user_id": user_id,
+        "action": action,
+        "resource_type": resource_type,
+        "resource_id": resource_id,
+        "details": details,
+        "ip_address": request.client.host if request else None,
+        "user_agent": request.headers.get("user-agent") if request else None
+    }
+    
+    # Fire and forget - don't block the API response
+    log_audit_async.delay(audit_data)

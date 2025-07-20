@@ -259,10 +259,17 @@ class PostgresPipeline:
             planta = item.get('planta')
             ascensor = item.get('ascensor')
 
-            # Condición para excluir la propiedad
-            if planta > 3 and ascensor == 0:
-                print(f"Property excluded: {p_id}, Planta: {planta}, Ascensor: {ascensor}")
-                return
+            # Condición para excluir la propiedad (fix type checking)
+            try:
+                planta_num = int(planta) if planta and str(planta).strip() else 0
+                ascensor_num = int(ascensor) if ascensor is not None else 0
+                
+                if planta_num > 3 and ascensor_num == 0:
+                    print(f"Property excluded: {p_id}, Planta: {planta_num}, Ascensor: {ascensor_num}")
+                    raise DropItem(f"Property excluded due to floor/elevator criteria: {p_id}")
+            except (ValueError, TypeError):
+                # If we can't convert to int, don't exclude based on this criteria
+                print(f"Could not parse planta/ascensor for {p_id}: planta={planta}, ascensor={ascensor}")
                 
             try:
                 # Verificar si el item ya existe en la base de datos
@@ -311,12 +318,11 @@ class PostgresPipeline:
                 else:
                     # Insert item into database
                     self.cursor.execute("""
-                        INSERT INTO propiedades (p_id, nombre, fecha_new, fecha_updated, fecha_crawl, precio, metros, habitaciones, planta, ascensor, poblacion, url, descripcion, estatus)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        INSERT INTO propiedades (p_id, nombre, fecha_updated, fecha_crawl, precio, metros, habitaciones, planta, ascensor, poblacion, url, descripcion, estatus)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     """, (
                         p_id,
                         item.get('nombre'),
-                        item.get('fecha_crawl'),  # Use fecha_crawl for fecha_new to maintain compatibility
                         item.get('fecha_crawl'),  # Use fecha_crawl for fecha_updated to maintain compatibility
                         item.get('fecha_crawl'),
                         item.get('precio'),

@@ -9,20 +9,23 @@ class PropiedadesSpider(scrapy.Spider):
     name = "propiedades"
     allowed_domains = ["idealista.com", "api.scrapingant.com"]
     
-    def __init__(self, *args, **kwargs):
-        super(PropiedadesSpider, self).__init__(*args, **kwargs)
+    @classmethod
+    def from_crawler(cls, crawler, *args, **kwargs):
+        spider = cls(*args, **kwargs)
+        spider._set_crawler(crawler)
+        spider.crawler = crawler
         
         # Get job configuration from Celery task
-        self.job_id = kwargs.get('job_id')
-        self.job_config = kwargs.get('job_config', {})
+        spider.job_id = kwargs.get('job_id')
+        spider.job_config = kwargs.get('job_config', {})
         
         # Parse start URLs from settings or use defaults
-        start_urls_setting = self.settings.get('START_URLS')
+        start_urls_setting = crawler.settings.get('START_URLS')
         if start_urls_setting:
-            self.start_urls = start_urls_setting.split(',')
+            spider.start_urls = start_urls_setting.split('|||')
         else:
             # Default URLs - keep existing ones
-            self.start_urls = [
+            spider.start_urls = [
                 'https://www.idealista.com/venta-viviendas/premia-de-mar-barcelona/con-precio-hasta_120000,de-dos-dormitorios,de-tres-dormitorios,de-cuatro-cinco-habitaciones-o-mas,ultimas-plantas,plantas-intermedias/',
                 'https://www.idealista.com/venta-viviendas/argentona-barcelona/con-precio-hasta_120000,de-dos-dormitorios,de-tres-dormitorios,de-cuatro-cinco-habitaciones-o-mas,publicado_ultimas-48-horas,ultimas-plantas,plantas-intermedias/',
                 'https://www.idealista.com/venta-viviendas/sant-pol-de-mar-barcelona/con-precio-hasta_120000,de-dos-dormitorios,de-tres-dormitorios,de-cuatro-cinco-habitaciones-o-mas,publicado_ultimas-48-horas,ultimas-plantas,plantas-intermedias/',
@@ -33,10 +36,18 @@ class PropiedadesSpider(scrapy.Spider):
                 'https://www.idealista.com/venta-viviendas/granollers-barcelona/con-precio-hasta_120000,de-dos-dormitorios,de-tres-dormitorios,de-cuatro-cinco-habitaciones-o-mas,publicado_ultimas-48-horas,ultimas-plantas,plantas-intermedias/'
             ]
         
-        self.logger.info(f"Spider initialized with job_id: {self.job_id}")
-        self.logger.info(f"Start URLs: {self.start_urls}")
-        self.logger.info(f"Job config: {self.job_config}")
+        spider.logger.info(f"Spider initialized with job_id: {spider.job_id}")
+        spider.logger.info(f"Start URLs: {spider.start_urls}")
+        spider.logger.info(f"Job config: {spider.job_config}")
+        
+        return spider
 
+    def __init__(self, *args, **kwargs):
+        super(PropiedadesSpider, self).__init__(*args, **kwargs)
+        # Initialize with default values - these will be overridden by from_crawler
+        self.job_id = kwargs.get('job_id')
+        self.job_config = kwargs.get('job_config', {})
+        # Don't set start_urls here - it will be set by from_crawler
 
     def parse(self, response):
         # Selecciona todos los divs con la clase 'item-info-container'
