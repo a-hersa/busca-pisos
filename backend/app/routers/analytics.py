@@ -40,33 +40,29 @@ async def get_dashboard_stats(
     
     # Price distribution
     price_query = text("""
-        SELECT 
-            CASE 
-                WHEN precio < 50000 THEN '< 50k'
-                WHEN precio < 100000 THEN '50k-100k'
-                WHEN precio < 200000 THEN '100k-200k'
-                WHEN precio < 500000 THEN '200k-500k'
-                ELSE '> 500k'
-            END as price_range,
-            COUNT(*) as count
-        FROM propiedades 
-        WHERE precio IS NOT NULL
-        GROUP BY 
-            CASE 
-                WHEN precio < 50000 THEN '< 50k'
-                WHEN precio < 100000 THEN '50k-100k'
-                WHEN precio < 200000 THEN '100k-200k'
-                WHEN precio < 500000 THEN '200k-500k'
-                ELSE '> 500k'
-            END
-        ORDER BY 
-            CASE 
-                WHEN precio < 50000 THEN 1
-                WHEN precio < 100000 THEN 2
-                WHEN precio < 200000 THEN 3
-                WHEN precio < 500000 THEN 4
-                ELSE 5
-            END
+        WITH price_ranges AS (
+            SELECT 
+                CASE 
+                    WHEN precio < 50000 THEN '< 50k'
+                    WHEN precio < 100000 THEN '50k-100k'
+                    WHEN precio < 200000 THEN '100k-200k'
+                    WHEN precio < 500000 THEN '200k-500k'
+                    ELSE '> 500k'
+                END as price_range,
+                CASE 
+                    WHEN precio < 50000 THEN 1
+                    WHEN precio < 100000 THEN 2
+                    WHEN precio < 200000 THEN 3
+                    WHEN precio < 500000 THEN 4
+                    ELSE 5
+                END as sort_order
+            FROM propiedades 
+            WHERE precio IS NOT NULL
+        )
+        SELECT price_range, COUNT(*) as count
+        FROM price_ranges
+        GROUP BY price_range, sort_order
+        ORDER BY sort_order
     """)
     price_result = await session.execute(price_query)
     price_distribution = [
