@@ -5,7 +5,7 @@ services:
   # PostgreSQL Database with performance optimizations
   postgres:
     image: postgres:15-alpine
-    container_name: inmobiliario-postgres
+    container_name: busca-pisos-postgres
     restart: always
     environment:
       - POSTGRES_DB=${POSTGRES_DB}
@@ -16,7 +16,7 @@ services:
       - postgres_data_new:/var/lib/postgresql/data
       - ./backend/database_indexes.sql:/docker-entrypoint-initdb.d/indexes.sql
     networks:
-      - inmobiliario_network
+      - busca_pisos_network
     ports:
       - "5432:5432"
     command: |
@@ -40,7 +40,7 @@ services:
   # Redis for Celery and Caching
   redis:
     image: redis:7-alpine
-    container_name: inmobiliario-redis
+    container_name: busca-pisos-redis
     restart: always
     environment:
       - TZ=Europe/Madrid
@@ -55,7 +55,7 @@ services:
     volumes:
       - redis_data:/data
     networks:
-      - inmobiliario_network
+      - busca_pisos_network
     ports:
       - "6379:6379"
     healthcheck:
@@ -69,7 +69,7 @@ services:
     build: 
       context: ./backend
       dockerfile: Dockerfile
-    container_name: inmobiliario-backend
+    container_name: busca-pisos-backend
     restart: always
     environment:
       - POSTGRES_DB=${POSTGRES_DB}
@@ -89,7 +89,7 @@ services:
       - SMTP_FROM_EMAIL=${SMTP_FROM_EMAIL}
       - SMTP_FROM_NAME=${SMTP_FROM_NAME}
     networks:
-      - inmobiliario_network
+      - busca_pisos_network
     ports:
       - "8001:8000"
     depends_on:
@@ -103,7 +103,7 @@ services:
     build: 
       context: ./backend
       dockerfile: Dockerfile
-    container_name: inmobiliario-celery-worker
+    container_name: busca-pisos-celery-worker
     restart: always
     environment:
       - POSTGRES_DB=${POSTGRES_DB}
@@ -115,7 +115,7 @@ services:
       - TZ=Europe/Madrid
       - SCRAPINGANT_API_KEY=${SCRAPINGANT_API_KEY}
     networks:
-      - inmobiliario_network
+      - busca_pisos_network
     depends_on:
       postgres:
         condition: service_healthy
@@ -132,7 +132,7 @@ services:
     build: 
       context: ./backend
       dockerfile: Dockerfile
-    container_name: inmobiliario-celery-beat
+    container_name: busca-pisos-celery-beat
     restart: always
     environment:
       - POSTGRES_DB=${POSTGRES_DB}
@@ -143,7 +143,7 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - TZ=Europe/Madrid
     networks:
-      - inmobiliario_network
+      - busca_pisos_network
     depends_on:
       postgres:
         condition: service_healthy
@@ -156,21 +156,21 @@ services:
     build: 
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: inmobiliario-frontend
+    container_name: busca-pisos-frontend
     restart: always
     environment:
       - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
       - NEXT_PUBLIC_WS_URL=${NEXT_PUBLIC_WS_URL}
       - TZ=Europe/Madrid
     networks:
-      - inmobiliario_network
+      - busca_pisos_network
     ports:
       - "3000:3000"
     depends_on:
       - backend
 
 networks:
-  inmobiliario_network:
+  busca_pisos_network:
     driver: bridge
 
 volumes:

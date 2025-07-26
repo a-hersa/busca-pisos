@@ -17,6 +17,12 @@ ROADMAP-NEXTJS-FASTAPI.md
 # GitHub Actions
 .github/
 
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
 # Calculadora de rentabilidad
 test*.ipynb
 

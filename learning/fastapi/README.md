@@ -1,6 +1,6 @@
 # FastAPI Learning Guide
 
-A comprehensive guide to learning FastAPI using the **inmobiliario-tools** project as a practical example.
+A comprehensive guide to learning FastAPI using the **busca-pisos** project as a practical example.
 
 ## Overview
 
@@ -87,7 +87,7 @@ This learning guide covers all essential FastAPI concepts with real-world exampl
 The guides use examples from this real estate platform:
 
 ```
-inmobiliario-tools/
+busca-pisos/
 ├── backend/                 # FastAPI application
 │   ├── main.py             # Application entry point
 │   ├── app/
@@ -125,8 +125,8 @@ Use the real project to practice:
 ### 1. Set Up the Project
 ```bash
 # Clone the repository
-git clone https://github.com/your-repo/inmobiliario-tools.git
-cd inmobiliario-tools
+git clone https://github.com/your-repo/busca-pisos.git
+cd busca-pisos
 
 # Create environment file
 cp .env.example .env

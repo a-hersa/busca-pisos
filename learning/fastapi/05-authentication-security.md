@@ -2,7 +2,7 @@
 
 ## Overview
 
-This guide covers implementing authentication and security in FastAPI using JWT tokens, password hashing, and role-based access control as demonstrated in our inmobiliario-tools project.
+This guide covers implementing authentication and security in FastAPI using JWT tokens, password hashing, and role-based access control as demonstrated in our busca-pisos project.
 
 ## Core Security Components
 

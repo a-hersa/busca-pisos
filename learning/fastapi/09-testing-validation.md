@@ -1049,7 +1049,7 @@ async def test_database_query_performance(test_db):
 
 ## Conclusion
 
-You now have comprehensive learning materials covering all major aspects of FastAPI development, using real examples from the inmobiliario-tools project. These guides cover:
+You now have comprehensive learning materials covering all major aspects of FastAPI development, using real examples from the busca-pisos project. These guides cover:
 
 1. **FastAPI Basics** - Application setup and core concepts
 2. **Routing and Endpoints** - Creating and organizing API routes

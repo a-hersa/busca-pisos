@@ -1,4 +1,4 @@
--- Initialize inmobiliario database with required tables
+-- Initialize busca-pisos database with required tables
 
 -- Create propiedades table
 CREATE TABLE IF NOT EXISTS propiedades (

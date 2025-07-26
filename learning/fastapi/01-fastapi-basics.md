@@ -16,7 +16,7 @@ FastAPI is a modern, fast (high-performance) web framework for building APIs wit
 
 ## Project Structure Overview
 
-Let's look at how FastAPI is organized in our inmobiliario-tools project:
+Let's look at how FastAPI is organized in our busca-pisos project:
 
 ```
 backend/

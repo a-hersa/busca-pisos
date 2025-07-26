@@ -2,7 +2,7 @@
 
 ## Overview
 
-This guide covers how FastAPI integrates with databases using SQLAlchemy, specifically focusing on async operations as implemented in our inmobiliario-tools project.
+This guide covers how FastAPI integrates with databases using SQLAlchemy, specifically focusing on async operations as implemented in our busca-pisos project.
 
 ## Database Setup
 
