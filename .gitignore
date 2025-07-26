@@ -14,6 +14,9 @@ CLAUDE.md
 IMPLEMENTATION-STATUS.md
 ROADMAP-NEXTJS-FASTAPI.md
 
+# GitHub Actions
+.github/
+
 # Calculadora de rentabilidad
 test*.ipynb
 
