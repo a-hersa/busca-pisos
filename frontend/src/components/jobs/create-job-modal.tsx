@@ -14,7 +14,6 @@ interface CreateJobModalProps {
 
 const SPIDER_OPTIONS = [
   { value: 'propiedades', label: 'Propiedades (Idealista)' },
-  { value: 'municipios', label: 'Municipios' },
 ]
 
 const SCHEDULE_OPTIONS = [

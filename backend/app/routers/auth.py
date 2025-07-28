@@ -32,7 +32,7 @@ async def register(
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Username or email already registered"
+            detail="El usuario o email ya está registrado"
         )
     
     # Check if this is the first user (admin)
@@ -110,19 +110,19 @@ async def login(
     if not user or not verify_password(login_data.password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password"
+            detail="Usuario o contraseña incorrectos"
         )
     
     if not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User account is disabled"
+            detail="La cuenta de usuario está deshabilitada"
         )
     
     if not user.email_confirmed:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Please confirm your email address before logging in"
+            detail="Por favor confirma tu dirección de email antes de iniciar sesión"
         )
     
     # Update last login
