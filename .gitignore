@@ -223,5 +223,6 @@ temp/
 # CSV and data exports (project specific)
 *.csv
 *.json
+!package-lock.json
 *.pkl
 *.pickle
