@@ -5,7 +5,7 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 -- Create users table
 CREATE TABLE IF NOT EXISTS users (
-    id SERIAL PRIMARY KEY,
+    user_id SERIAL PRIMARY KEY,
     email VARCHAR(255) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     is_active BOOLEAN DEFAULT TRUE,
@@ -42,10 +42,20 @@ CREATE TABLE IF NOT EXISTS job_executions (
     execution_details JSONB DEFAULT '{}'::jsonb
 );
 
+-- Create user_sessions table
+CREATE TABLE IF NOT EXISTS user_sessions (
+    session_id UUID PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(user_id),
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+    ip_address INET,
+    user_agent TEXT
+);
+
 -- Create audit_logs table
 CREATE TABLE IF NOT EXISTS audit_logs (
     id SERIAL PRIMARY KEY,
-    user_id INTEGER REFERENCES users(id),
+    user_id INTEGER REFERENCES users(user_id),
     action VARCHAR(100) NOT NULL,
     resource_type VARCHAR(100),
     resource_id VARCHAR(100),
@@ -58,6 +68,9 @@ CREATE TABLE IF NOT EXISTS audit_logs (
 -- Performance indexes
 CREATE INDEX IF NOT EXISTS idx_users_email ON users (email);
 CREATE INDEX IF NOT EXISTS idx_users_is_active ON users (is_active);
+
+CREATE INDEX IF NOT EXISTS idx_user_sessions_user_id ON user_sessions (user_id);
+CREATE INDEX IF NOT EXISTS idx_user_sessions_expires_at ON user_sessions (expires_at);
 
 CREATE INDEX IF NOT EXISTS idx_crawl_jobs_status ON crawl_jobs (status);
 CREATE INDEX IF NOT EXISTS idx_crawl_jobs_created_at ON crawl_jobs (created_at DESC);
