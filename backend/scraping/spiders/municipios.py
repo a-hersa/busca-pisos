@@ -29,7 +29,7 @@ class MunicipiosSpider(scrapy.Spider):
             'scraping.pipelines.UrlToCSVPipeline': 400,
         },
         'LOG_FILE': f'./logs/scraping-municipios.log',
-        'JOBDIR': f'scraping/crawls/municipios',
+        # 'JOBDIR': f'scraping/crawls/municipios',  # Temporarily disabled due to queue corruption
     }
 
     # Conjunto para almacenar las URLs ya visitadas
