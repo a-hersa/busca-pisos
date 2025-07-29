@@ -5,6 +5,7 @@ import shutil
 import scrapy
 import logging
 import re
+import glob
 from scrapy import signals
 from scrapy.signalmanager import dispatcher
 from urllib.parse import urlparse, urlunparse, parse_qs
@@ -39,6 +40,9 @@ class MunicipiosSpider(scrapy.Spider):
         super().__init__(*args, **kwargs)
         dispatcher.connect(self.spider_closed, signals.spider_closed)
         self.logger.info("Spider de Municipios inicializado")
+        
+        # Clean corrupted cache files on startup
+        self._clean_corrupted_cache()
         # En este punto NO hay acceso a settings todavía
 
     @classmethod
@@ -59,6 +63,33 @@ class MunicipiosSpider(scrapy.Spider):
         crawler.signals.connect(spider.spider_closed, signal=signals.spider_closed)
         
         return spider
+    
+    def _clean_corrupted_cache(self):
+        """
+        Clean corrupted cache files that cause OSError: Invalid argument
+        """
+        try:
+            # Clean corrupted queue files
+            crawls_dir = './scraping/crawls/municipios/'
+            if os.path.exists(crawls_dir):
+                # Remove .seen and .state files that can cause corruption
+                for pattern in ['*.seen', '*.state', 'requests.queue/*']:
+                    for file_path in glob.glob(os.path.join(crawls_dir, pattern)):
+                        try:
+                            if os.path.isfile(file_path):
+                                os.remove(file_path)
+                                self.logger.info(f"Removed corrupted cache file: {file_path}")
+                            elif os.path.isdir(file_path):
+                                shutil.rmtree(file_path)
+                                self.logger.info(f"Removed corrupted cache directory: {file_path}")
+                        except Exception as e:
+                            self.logger.warning(f"Could not remove cache file {file_path}: {e}")
+                
+                # Recreate clean directory structure
+                os.makedirs(crawls_dir, exist_ok=True)
+                self.logger.info(f"Cleaned cache directory: {crawls_dir}")
+        except Exception as e:
+            self.logger.warning(f"Cache cleanup failed: {e}")
     
     def start_requests(self):
         """
