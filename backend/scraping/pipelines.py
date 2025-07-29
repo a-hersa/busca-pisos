@@ -5,7 +5,7 @@
 
 
 # useful for handling different item types with a single interface
-from scrapy.items import PropertyItem, UrlItem
+from scraping.items import PropertyItem, UrlItem
 import re
 import psycopg2
 import sqlite3
@@ -419,8 +419,8 @@ class UrlToCSVPipeline:
     
     def __init__(self):
         # Create output directory if it doesn't exist
-        os.makedirs('./scrapy/output', exist_ok=True)
-        self.csv_file = './scrapy/output/municipios.csv'
+        os.makedirs('./scraping/output', exist_ok=True)
+        self.csv_file = './scraping/output/municipios.csv'
         self.file = None
         self.writer = None
         self.urls_processed = set()
@@ -482,8 +482,8 @@ class SQLitePipeline:
 
     def open_spider(self, spider):
         # Create backend directory if it doesn't exist
-        os.makedirs('./scrapy/backend', exist_ok=True)
-        self.conn = sqlite3.connect("./scrapy/backend/inmuebles.db")
+        os.makedirs('./scraping/backend', exist_ok=True)
+        self.conn = sqlite3.connect("./scraping/backend/inmuebles.db")
         self.cursor = self.conn.cursor()
         
         # Create tables if they don't exist

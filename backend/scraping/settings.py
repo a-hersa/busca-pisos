@@ -1,4 +1,4 @@
-# Scrapy settings for scrapy project
+# Scrapy settings for scraping project
 #
 # For simplicity, this file contains only settings considered important or
 # commonly used. You can find more settings consulting the documentation:
@@ -13,10 +13,10 @@ from dotenv import load_dotenv
 # Cargar las variables de entorno desde el archivo .env
 load_dotenv()
 
-BOT_NAME = "scrapy"
+BOT_NAME = "scraping"
 
-SPIDER_MODULES = ["scrapy.spiders"]
-NEWSPIDER_MODULE = "scrapy.spiders"
+SPIDER_MODULES = ["scraping.spiders"]
+NEWSPIDER_MODULE = "scraping.spiders"
 
 # Configuración de conexión a PostgreSQL
 # DATABASE_URL = os.environ.get('DATABASE_URL')
@@ -63,13 +63,13 @@ DEFAULT_REQUEST_HEADERS = {
 # Enable or disable spider middlewares
 # See https://docs.scrapy.org/en/latest/topics/spider-middleware.html
 #SPIDER_MIDDLEWARES = {
-#    "scrapy.middlewares.ScrapySpiderMiddleware": 543,
+#    "scraping.middlewares.ScrapingSpiderMiddleware": 543,
 #}
 
 # Enable or disable downloader middlewares
 # See https://docs.scrapy.org/en/latest/topics/downloader-middleware.html
 DOWNLOADER_MIDDLEWARES = {
-    "scrapy.middlewares.ScrapingAntProxyMiddleware": 100,  # High priority to ensure it runs first
+    "scraping.middlewares.ScrapingAntProxyMiddleware": 100,  # High priority to ensure it runs first
 }
 
 # Enable or disable extensions
@@ -81,8 +81,8 @@ DOWNLOADER_MIDDLEWARES = {
 # Configure item pipelines
 # See https://docs.scrapy.org/en/latest/topics/item-pipeline.html
 ITEM_PIPELINES = {
-   "scrapy.pipelines.PropertyItemPipeline": 300,
-   "scrapy.pipelines.PostgresPipeline": 400,
+   "scraping.pipelines.PropertyItemPipeline": 300,
+   "scraping.pipelines.PostgresPipeline": 400,
 }
 
 # Enable and configure the AutoThrottle extension (disabled by default)

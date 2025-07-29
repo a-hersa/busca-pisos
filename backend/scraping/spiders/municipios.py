@@ -8,8 +8,8 @@ import re
 from scrapy import signals
 from scrapy.signalmanager import dispatcher
 from urllib.parse import urlparse, urlunparse, parse_qs
-from scrapy.items import UrlItem
-from scrapy.utils import is_target_url, is_no_visit, normalize_url
+from scraping.items import UrlItem
+from scraping.utils import is_target_url, is_no_visit, normalize_url
 import random
 
 logger = logging.getLogger(__name__)
@@ -18,18 +18,18 @@ class MunicipiosSpider(scrapy.Spider):
     name = 'municipios'
     allowed_domains = ['idealista.com']
     start_urls = ['https://www.idealista.com/venta-viviendas/']
-    pending_file = './scrapy/crawls/municipios/pending_urls.pkl'
+    pending_file = './scraping/crawls/municipios/pending_urls.pkl'
     
     custom_settings = {
         'DOWNLOADER_MIDDLEWARES': {
-            'scrapy.middlewares.ScrapingAntProxyMiddleware': 100,
+            'scraping.middlewares.ScrapingAntProxyMiddleware': 100,
         },
         'ITEM_PIPELINES': {
-            'scrapy.pipelines.MunicipiosPipeline': 300,
-            'scrapy.pipelines.UrlToCSVPipeline': 400,
+            'scraping.pipelines.MunicipiosPipeline': 300,
+            'scraping.pipelines.UrlToCSVPipeline': 400,
         },
-        'LOG_FILE': f'./logs/scrapy-municipios.log',
-        'JOBDIR': f'scrapy/crawls/municipios',
+        'LOG_FILE': f'./logs/scraping-municipios.log',
+        'JOBDIR': f'scraping/crawls/municipios',
     }
 
     # Conjunto para almacenar las URLs ya visitadas
