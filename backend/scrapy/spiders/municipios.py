@@ -8,8 +8,8 @@ import re
 from scrapy import signals
 from scrapy.signalmanager import dispatcher
 from urllib.parse import urlparse, urlunparse, parse_qs
-from inmobiliario.items import UrlItem
-from inmobiliario.utils import is_target_url, is_no_visit, normalize_url
+from scrapy.items import UrlItem
+from scrapy.utils import is_target_url, is_no_visit, normalize_url
 import random
 
 logger = logging.getLogger(__name__)
@@ -18,18 +18,18 @@ class MunicipiosSpider(scrapy.Spider):
     name = 'municipios'
     allowed_domains = ['idealista.com']
     start_urls = ['https://www.idealista.com/venta-viviendas/']
-    pending_file = './inmobiliario/crawls/municipios/pending_urls.pkl'
+    pending_file = './scrapy/crawls/municipios/pending_urls.pkl'
     
     custom_settings = {
         'DOWNLOADER_MIDDLEWARES': {
-            'inmobiliario.middlewares.ScrapingAntProxyMiddleware': 100,
+            'scrapy.middlewares.ScrapingAntProxyMiddleware': 100,
         },
         'ITEM_PIPELINES': {
-            'inmobiliario.pipelines.PostgresPipeline': 300,
-            'inmobiliario.pipelines.UrlToCSVPipeline': 400,
+            'scrapy.pipelines.MunicipiosPipeline': 300,
+            'scrapy.pipelines.UrlToCSVPipeline': 400,
         },
-        'LOG_FILE': f'./logs/inmobiliario-municipios.log',
-        'JOBDIR': f'inmobiliario/crawls/municipios',
+        'LOG_FILE': f'./logs/scrapy-municipios.log',
+        'JOBDIR': f'scrapy/crawls/municipios',
     }
 
     # Conjunto para almacenar las URLs ya visitadas
@@ -49,7 +49,11 @@ class MunicipiosSpider(scrapy.Spider):
         spider.target_url_pattern = crawler.settings.get('TARGET_URL_PATTERN')
         spider.excluded_url_patterns = crawler.settings.get('EXCLUDED_URL_PATTERNS')
         spider.excluded_url_endings = crawler.settings.get('EXCLUDED_URL_ENDINGS')
-        spider.browsers = crawler.settings.get('BROWSERS')
+        spider.browsers = crawler.settings.get('BROWSERS', ['chrome110'])  # Default fallback
+
+        # Log loaded settings for debugging
+        spider.logger.info(f"Target URL pattern: {spider.target_url_pattern}")
+        spider.logger.info(f"Browsers loaded: {spider.browsers}")
 
         # Señales como spider_closed para ejecutar código cuando el spider termina.
         crawler.signals.connect(spider.spider_closed, signal=signals.spider_closed)
@@ -60,20 +64,19 @@ class MunicipiosSpider(scrapy.Spider):
         """
         Inicia las solicitudes con la configuración de impersonate
         """
-        # try:
-        #     with open('visited_urls.csv', 'r', encoding='utf-8') as f:
-        #         for line in f:
-        #             self.visited_urls.add(line.strip())
-        #     self.logger.info(f"Se cargaron {len(self.visited_urls)} URLs visitadas previamente.")
-        # except FileNotFoundError:
-        #     self.logger.info("No se encontró archivo de URLs visitadas previas.")
+        # Ensure browsers list is available
+        if not hasattr(self, 'browsers') or not self.browsers:
+            self.browsers = ['chrome110']  # Fallback
+            self.logger.warning("Browsers not loaded, using fallback: chrome110")
+        
+        self.logger.info(f"Starting requests with browsers: {self.browsers}")
 
         if os.path.exists(self.pending_file):
             with open(self.pending_file, 'rb') as f:
                 pending_urls = pickle.load(f)
             self.logger.info(f'Cargadas {len(pending_urls)} URLs pendientes')
             for url in pending_urls:
-                yield scrapy.Request(url, callback=self.parse, dont_filter=True, meta={'impersonate': random.choice(self.browsers)})  # ✅ Aquí
+                yield scrapy.Request(url, callback=self.parse, dont_filter=True, meta={'impersonate': random.choice(self.browsers)})
         else:
             for url in self.start_urls:
                 yield scrapy.Request(url, callback=self.parse, meta={'impersonate': random.choice(self.browsers)})       
@@ -137,7 +140,7 @@ class MunicipiosSpider(scrapy.Spider):
                 callback=self.parse,
                 # dont_filter=True,
                 meta={
-                    'impersonate': random.choice(self.browsers),  # Usar el navegador seleccionado al azar
+                    'impersonate': random.choice(self.browsers) if self.browsers else 'chrome110',
                 }
             )
 

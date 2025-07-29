@@ -1,4 +1,4 @@
-# Scrapy settings for inmobiliario project
+# Scrapy settings for scrapy project
 #
 # For simplicity, this file contains only settings considered important or
 # commonly used. You can find more settings consulting the documentation:
@@ -13,16 +13,16 @@ from dotenv import load_dotenv
 # Cargar las variables de entorno desde el archivo .env
 load_dotenv()
 
-BOT_NAME = "inmobiliario"
+BOT_NAME = "scrapy"
 
-SPIDER_MODULES = ["inmobiliario.spiders"]
-NEWSPIDER_MODULE = "inmobiliario.spiders"
+SPIDER_MODULES = ["scrapy.spiders"]
+NEWSPIDER_MODULE = "scrapy.spiders"
 
 # Configuración de conexión a PostgreSQL
 # DATABASE_URL = os.environ.get('DATABASE_URL')
 POSTGRES_HOST = 'postgres'
 POSTGRES_PORT = '5432'
-POSTGRES_DB = 'inmobiliario_db'
+POSTGRES_DB = os.getenv("POSTGRES_DB", 'busca_pisos_db')
 POSTGRES_USER = os.getenv("POSTGRES_USER")
 POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD")
 
@@ -63,13 +63,13 @@ DEFAULT_REQUEST_HEADERS = {
 # Enable or disable spider middlewares
 # See https://docs.scrapy.org/en/latest/topics/spider-middleware.html
 #SPIDER_MIDDLEWARES = {
-#    "inmobiliario.middlewares.InmobiliarioSpiderMiddleware": 543,
+#    "scrapy.middlewares.ScrapySpiderMiddleware": 543,
 #}
 
 # Enable or disable downloader middlewares
 # See https://docs.scrapy.org/en/latest/topics/downloader-middleware.html
 DOWNLOADER_MIDDLEWARES = {
-    "inmobiliario.middlewares.ScrapingAntProxyMiddleware": 100,  # High priority to ensure it runs first
+    "scrapy.middlewares.ScrapingAntProxyMiddleware": 100,  # High priority to ensure it runs first
 }
 
 # Enable or disable extensions
@@ -81,8 +81,8 @@ DOWNLOADER_MIDDLEWARES = {
 # Configure item pipelines
 # See https://docs.scrapy.org/en/latest/topics/item-pipeline.html
 ITEM_PIPELINES = {
-   "inmobiliario.pipelines.PropertyItemPipeline": 300,
-   "inmobiliario.pipelines.PostgresPipeline": 400,
+   "scrapy.pipelines.PropertyItemPipeline": 300,
+   "scrapy.pipelines.PostgresPipeline": 400,
 }
 
 # Enable and configure the AutoThrottle extension (disabled by default)

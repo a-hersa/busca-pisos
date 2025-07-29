@@ -11,7 +11,7 @@ load_dotenv()
 
 class ScrapingAntProxyMiddleware:
     def __init__(self):
-        self.api_key = f'{os.getenv("SCRAPINGANT")}'  # Reemplaza con tu clave API
+        self.api_key = f'{os.getenv("SCRAPINGANT_API_KEY")}'  # Reemplaza con tu clave API
         self.base_url = "api.scrapingant.com"
         self.browser = "&browser=false"
         self.proxy_country = "&proxy_country=ES"

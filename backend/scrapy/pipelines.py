@@ -5,7 +5,7 @@
 
 
 # useful for handling different item types with a single interface
-from inmobiliario.items import PropertyItem, UrlItem
+from scrapy.items import PropertyItem, UrlItem
 import re
 import psycopg2
 import sqlite3
@@ -351,6 +351,66 @@ class PostgresPipeline:
 
         return item
 
+class MunicipiosPipeline:
+    """
+    Dedicated pipeline for municipios spider - saves URLs only to municipios table and CSV
+    """
+    
+    def open_spider(self, spider):
+        if spider.name != 'municipios':
+            return
+            
+        # Database connection for municipios
+        self.connection = psycopg2.connect(
+            host=spider.settings.get('POSTGRES_HOST'),
+            port=spider.settings.get('POSTGRES_PORT'),
+            dbname=spider.settings.get('POSTGRES_DB'),
+            user=spider.settings.get('POSTGRES_USER'),
+            password=spider.settings.get('POSTGRES_PASSWORD')
+        )
+        self.cursor = self.connection.cursor()
+        spider.logger.info("MunicipiosPipeline: Database connection established")
+
+    def close_spider(self, spider):
+        if spider.name != 'municipios':
+            return
+            
+        if hasattr(self, 'cursor'):
+            self.cursor.close()
+        if hasattr(self, 'connection'):
+            self.connection.close()
+        spider.logger.info("MunicipiosPipeline: Database connection closed")
+
+    def process_item(self, item, spider):
+        # Only process items from municipios spider
+        if spider.name != 'municipios':
+            return item
+            
+        # Only process UrlItem instances
+        if not isinstance(item, UrlItem):
+            return item
+            
+        try:
+            url = item['url']
+            spider_name = spider.name
+            
+            # Insert URL into municipios table only (ignore if already exists)
+            self.cursor.execute("""
+                INSERT INTO municipios (url, spider_name) 
+                VALUES (%s, %s) 
+                ON CONFLICT (url) DO NOTHING
+            """, (url, spider_name))
+            
+            self.connection.commit()
+            spider.logger.debug(f"MunicipiosPipeline: URL saved to municipios table: {url}")
+            
+        except psycopg2.Error as e:
+            spider.logger.error(f"MunicipiosPipeline: Database error saving URL: {e}")
+            self.connection.rollback()
+            raise DropItem(f"Database error: {e}")
+        
+        return item
+
 class UrlToCSVPipeline:
     """
     Pipeline para exportar URLs a un archivo CSV durante la ejecución
@@ -359,13 +419,17 @@ class UrlToCSVPipeline:
     
     def __init__(self):
         # Create output directory if it doesn't exist
-        os.makedirs('./inmobiliario/output', exist_ok=True)
-        self.csv_file = './inmobiliario/output/municipios.csv'
+        os.makedirs('./scrapy/output', exist_ok=True)
+        self.csv_file = './scrapy/output/municipios.csv'
         self.file = None
         self.writer = None
         self.urls_processed = set()
 
     def open_spider(self, spider):
+        # Only process municipios spider
+        if spider.name != 'municipios':
+            return
+            
         # Crear el archivo CSV si no existe
         file_exists = os.path.isfile(self.csv_file)
         
@@ -390,13 +454,17 @@ class UrlToCSVPipeline:
             self.writer.writerow(['url'])
     
     def close_spider(self, spider):
+        # Only process municipios spider
+        if spider.name != 'municipios':
+            return
+            
         if self.file:
             self.file.close()
         logger.info(f"Total de URLs procesadas: {len(self.urls_processed)}")
     
     def process_item(self, item, spider):
-        # Only process UrlItem instances
-        if not isinstance(item, UrlItem):
+        # Only process municipios spider and UrlItem instances
+        if spider.name != 'municipios' or not isinstance(item, UrlItem):
             return item
             
         url = item['url']
@@ -414,8 +482,8 @@ class SQLitePipeline:
 
     def open_spider(self, spider):
         # Create backend directory if it doesn't exist
-        os.makedirs('./inmobiliario/backend', exist_ok=True)
-        self.conn = sqlite3.connect("./inmobiliario/backend/inmuebles.db")
+        os.makedirs('./scrapy/backend', exist_ok=True)
+        self.conn = sqlite3.connect("./scrapy/backend/inmuebles.db")
         self.cursor = self.conn.cursor()
         
         # Create tables if they don't exist
