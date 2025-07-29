@@ -14,7 +14,7 @@ services:
       - TZ=Europe/Madrid
     volumes:
       - postgres_data_new:/var/lib/postgresql/data
-      - ./backend/database_indexes.sql:/docker-entrypoint-initdb.d/indexes.sql
+      - ./postgres/init:/docker-entrypoint-initdb.d
     networks:
       - busca_pisos_network
     ports:
