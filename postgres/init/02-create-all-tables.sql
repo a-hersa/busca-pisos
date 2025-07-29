@@ -14,15 +14,6 @@ CREATE TABLE IF NOT EXISTS users (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Create municipios table for URL storage
-CREATE TABLE IF NOT EXISTS municipios (
-    id SERIAL PRIMARY KEY,
-    url VARCHAR(500) UNIQUE NOT NULL,
-    fecha_found DATE DEFAULT CURRENT_DATE,
-    spider_name VARCHAR(100),
-    processed BOOLEAN DEFAULT FALSE
-);
-
 -- Create crawl_jobs table
 CREATE TABLE IF NOT EXISTS crawl_jobs (
     job_id SERIAL PRIMARY KEY,
@@ -80,9 +71,6 @@ CREATE INDEX IF NOT EXISTS idx_users_is_active ON users (is_active);
 
 CREATE INDEX IF NOT EXISTS idx_user_sessions_user_id ON user_sessions (user_id);
 CREATE INDEX IF NOT EXISTS idx_user_sessions_expires_at ON user_sessions (expires_at);
-
-CREATE INDEX IF NOT EXISTS idx_municipios_spider ON municipios(spider_name);
-CREATE INDEX IF NOT EXISTS idx_municipios_processed ON municipios(processed);
 
 CREATE INDEX IF NOT EXISTS idx_crawl_jobs_status ON crawl_jobs (status);
 CREATE INDEX IF NOT EXISTS idx_crawl_jobs_created_at ON crawl_jobs (created_at DESC);
