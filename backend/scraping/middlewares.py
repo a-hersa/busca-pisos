@@ -16,8 +16,8 @@ class ScrapingAntProxyMiddleware:
         # Enable browser rendering to avoid detection
         self.browser = "&browser=true"
         self.proxy_country = "&proxy_country=ES"
-        # Add stealth mode and other anti-detection features
-        self.extra_params = "&return_page_source=true&stealth_mode=true&block_resources=true"
+        # Add stealth mode and other anti-detection features (remove invalid block_resources)
+        self.extra_params = "&return_page_source=true&stealth_mode=true"
 
     @classmethod
     def from_crawler(cls, crawler):
@@ -35,14 +35,16 @@ class ScrapingAntProxyMiddleware:
         
         # Try different configurations if detection occurs
         configs = [
-            # Config 1: Browser mode with stealth
-            f"{self.browser}{self.proxy_country}{self.extra_params}",
-            # Config 2: Browser mode without stealth
+            # Config 1: Browser mode with stealth + Spain
+            "&browser=true&proxy_country=ES&return_page_source=true&stealth_mode=true",
+            # Config 2: Browser mode without stealth + Spain
             "&browser=true&proxy_country=ES&return_page_source=true",
-            # Config 3: Different proxy country
-            "&browser=true&proxy_country=US&return_page_source=true&stealth_mode=true",
-            # Config 4: No browser, basic config
-            "&browser=false&proxy_country=DE&return_page_source=true"
+            # Config 3: Browser + stealth with different country
+            "&browser=true&proxy_country=FR&return_page_source=true&stealth_mode=true",
+            # Config 4: Basic browser mode with UK proxy
+            "&browser=true&proxy_country=GB&return_page_source=true",
+            # Config 5: No browser mode (last resort)
+            "&browser=false&proxy_country=ES&return_page_source=true"
         ]
         
         # Codifica la URL original
@@ -57,6 +59,7 @@ class ScrapingAntProxyMiddleware:
 
                 if i > 0:  # Log retry attempts
                     spider.logger.info(f"Retrying with config {i+1}: {request.url}")
+                spider.logger.info(f"Using ScrapingAnt config {i+1}: {config}")
                 spider.logger.debug(f"ScrapingAnt API request: {api_request_path}")
 
                 # Realiza la solicitud al proxy
@@ -76,12 +79,21 @@ class ScrapingAntProxyMiddleware:
                     )
                     return new_response
                 elif res.status == 423:  # Locked - try next config
-                    spider.logger.warning(f"ScrapingAnt config {i+1} detected, trying next config")
+                    spider.logger.warning(f"ScrapingAnt config {i+1} detected (423 Locked), trying next config")
                     res.read()  # consume response body
+                    continue
+                elif res.status == 422:  # Invalid parameters - try next config
+                    error_body = res.read()
+                    spider.logger.warning(f"ScrapingAnt config {i+1} invalid parameters (422): {error_body}")
+                    continue
+                elif res.status == 404:  # Site unreachable - try next config
+                    error_body = res.read()
+                    spider.logger.warning(f"ScrapingAnt config {i+1} site unreachable (404): {error_body}")
                     continue
                 else:
                     spider.logger.error(f"ScrapingAnt proxy request failed: {res.status} {res.reason}")
-                    spider.logger.error(f"Response body: {res.read()}")
+                    error_body = res.read()
+                    spider.logger.error(f"Response body: {error_body}")
                     if i == len(configs) - 1:  # Last config failed
                         return None
                     continue
