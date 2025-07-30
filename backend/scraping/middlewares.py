@@ -82,6 +82,19 @@ class ScrapingAntProxyMiddleware:
                     spider.logger.warning(f"ScrapingAnt config {i+1} detected (423 Locked), trying next config")
                     res.read()  # consume response body
                     continue
+                elif res.status == 409:  # Concurrency limit reached - wait and retry once
+                    error_body = res.read()
+                    spider.logger.warning(f"ScrapingAnt concurrency limit reached (409): {error_body}")
+                    if not hasattr(request, '_scrapingant_409_retry'):
+                        spider.logger.info("Waiting 60 seconds for concurrency limit to reset...")
+                        import time
+                        time.sleep(60)  # Wait 60 seconds for limit to reset
+                        request._scrapingant_409_retry = True  # Mark that we've retried once
+                        # Retry the same configuration after waiting
+                        continue
+                    else:
+                        spider.logger.error("ScrapingAnt concurrency limit persists after retry, skipping request")
+                        continue  # Try next config if available
                 elif res.status == 422:  # Invalid parameters - try next config
                     error_body = res.read()
                     spider.logger.warning(f"ScrapingAnt config {i+1} invalid parameters (422): {error_body}")

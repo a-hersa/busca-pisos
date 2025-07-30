@@ -32,20 +32,20 @@ class MunicipiosSpider(scrapy.Spider):
         'LOG_FILE': f'./logs/scraping-municipios.log',
         # 'JOBDIR': f'scraping/crawls/municipios',  # Temporarily disabled due to queue corruption
         
-        # Anti-detection settings
-        'DOWNLOAD_DELAY': 3,  # 3 second delay between requests
-        'RANDOMIZE_DOWNLOAD_DELAY': 0.5,  # Randomize delay (0.5 * to 1.5 * DOWNLOAD_DELAY)
+        # Anti-detection and rate limiting settings for free tier
+        'DOWNLOAD_DELAY': 10,  # 10 second delay between requests to avoid hitting limits
+        'RANDOMIZE_DOWNLOAD_DELAY': 0.5,  # Randomize delay (5-15 seconds)
         'CONCURRENT_REQUESTS': 1,  # Only one concurrent request
         'CONCURRENT_REQUESTS_PER_DOMAIN': 1,
         'AUTOTHROTTLE_ENABLED': True,
-        'AUTOTHROTTLE_START_DELAY': 2,
-        'AUTOTHROTTLE_MAX_DELAY': 10,
-        'AUTOTHROTTLE_TARGET_CONCURRENCY': 1.0,
+        'AUTOTHROTTLE_START_DELAY': 10,
+        'AUTOTHROTTLE_MAX_DELAY': 30,  # Max 30 second delay
+        'AUTOTHROTTLE_TARGET_CONCURRENCY': 0.5,  # Very conservative concurrency
         'AUTOTHROTTLE_DEBUG': True,  # Enable to see throttling stats
         
         # Retry settings
         'RETRY_TIMES': 3,
-        'RETRY_HTTP_CODES': [500, 502, 503, 504, 522, 524, 408, 429, 403, 423],
+        'RETRY_HTTP_CODES': [500, 502, 503, 504, 522, 524, 408, 429, 403, 423, 409],
     }
 
     # Conjunto para almacenar las URLs ya visitadas
