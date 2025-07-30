@@ -14,10 +14,10 @@ class ScrapingAntProxyMiddleware:
         self.api_key = f'{os.getenv("SCRAPINGANT_API_KEY")}'  # Reemplaza con tu clave API
         self.base_url = "api.scrapingant.com"
         # Enable browser rendering to avoid detection
-        self.browser = "&browser=true"
-        self.proxy_country = "&proxy_country=ES"
+        self.browser = "&browser=false"
+        # self.proxy_country = "&proxy_country=ES"
         # Add stealth mode and other anti-detection features (remove invalid block_resources)
-        self.extra_params = "&return_page_source=true&stealth_mode=true"
+        # self.extra_params = "&return_page_source=true&stealth_mode=true"
 
     @classmethod
     def from_crawler(cls, crawler):
