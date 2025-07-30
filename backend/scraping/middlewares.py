@@ -34,17 +34,15 @@ class ScrapingAntProxyMiddleware:
         spider.logger.info(f"Processing request through ScrapingAnt: {request.url}")
         
         # Try different configurations if detection occurs
+        # Based on testing: only "&browser=false" works, avoid "&return_page_source"
         configs = [
-            # Config 1: Browser mode with stealth + Spain
+            # Config 1: Known working configuration (tested)
             "&browser=false",
-            # Config 2: Browser mode without stealth + Spain
+            # Config 2: Working config with Spain proxy
             "&browser=false&proxy_country=ES",
-            # Config 3: Browser + stealth with different country
-            "&browser=true&proxy_country=FR&return_page_source=true&stealth_mode=true",
-            # Config 4: Basic browser mode with UK proxy
-            "&browser=true&proxy_country=GB&return_page_source=true",
-            # Config 5: No browser mode (last resort)
-            "&browser=false&proxy_country=ES&return_page_source=true"
+            # Config 3: Working config with different countries as fallback
+            "&browser=false&proxy_country=FR",
+            "&browser=false&proxy_country=GB"
         ]
         
         # Codifica la URL original

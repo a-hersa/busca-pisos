@@ -121,6 +121,7 @@ EXCLUDED_URL_PATTERNS = [
     "/con-", 
     "/pagina-", 
     "/mapa-",
+    "/inmueble/",  # Exclude individual property pages
     "/news/",
     "/es/",
     "/it/", 
