@@ -36,13 +36,12 @@ class ScrapingAntProxyMiddleware:
         # Try different configurations if detection occurs
         # Based on testing: only "&browser=false" works, avoid "&return_page_source"
         configs = [
-            # Config 1: Known working configuration (tested)
-            "&browser=false",
-            # Config 2: Working config with Spain proxy
+            # Config 1: Known working configuration (with Spain proxy)
             "&browser=false&proxy_country=ES",
-            # Config 3: Working config with different countries as fallback
-            "&browser=false&proxy_country=FR",
-            "&browser=false&proxy_country=GB"
+            # Config 2: Working config without contry
+            "&browser=false",
+            # Config 3: Working config with Italy proxy as fallback
+            "&browser=false&proxy_country=IT"
         ]
         
         # Codifica la URL original
