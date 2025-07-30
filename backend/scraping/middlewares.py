@@ -36,9 +36,9 @@ class ScrapingAntProxyMiddleware:
         # Try different configurations if detection occurs
         configs = [
             # Config 1: Browser mode with stealth + Spain
-            "&browser=true&proxy_country=ES&return_page_source=true&stealth_mode=true",
+            "&browser=false",
             # Config 2: Browser mode without stealth + Spain
-            "&browser=true&proxy_country=ES&return_page_source=true",
+            "&browser=false&proxy_country=ES",
             # Config 3: Browser + stealth with different country
             "&browser=true&proxy_country=FR&return_page_source=true&stealth_mode=true",
             # Config 4: Basic browser mode with UK proxy
