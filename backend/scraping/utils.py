@@ -67,6 +67,11 @@ def is_no_visit(url, target_pattern, excluded_patterns):
     if 'idealista.com' not in url:
         return True
     
+    # URLs que no contienen el patrón objetivo (TARGET_URL_PATTERN)
+    # Solo crawlear URLs que contengan el patrón objetivo
+    if target_pattern and target_pattern not in url:
+        return True
+    
     # URLs con patrones excluidos
     if excluded_patterns:
         for pattern in excluded_patterns:
