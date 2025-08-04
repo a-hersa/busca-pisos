@@ -6,6 +6,9 @@ import scrapy
 import logging
 import re
 import glob
+import time
+import signal
+import sys
 from scrapy import signals
 from scrapy.signalmanager import dispatcher
 from urllib.parse import urlparse, urlunparse, parse_qs
@@ -19,7 +22,12 @@ class MunicipiosSpider(scrapy.Spider):
     name = 'municipios'
     allowed_domains = ['idealista.com']
     start_urls = ['https://www.idealista.com/venta-viviendas/']
+    
+    # State management files
+    state_dir = './scraping/crawls/municipios'
     pending_file = './scraping/crawls/municipios/pending_urls.pkl'
+    state_file = './scraping/crawls/municipios/spider_state.pkl'
+    checkpoint_file = './scraping/crawls/municipios/checkpoint.pkl'
     
     custom_settings = {
         'DOWNLOADER_MIDDLEWARES': {
@@ -30,7 +38,7 @@ class MunicipiosSpider(scrapy.Spider):
             'scraping.pipelines.UrlToCSVPipeline': 400,
         },
         'LOG_FILE': f'./logs/scraping-municipios.log',
-        # 'JOBDIR': f'scraping/crawls/municipios',  # Temporarily disabled due to queue corruption
+        # JOBDIR disabled - using custom state management instead
         
         # Anti-detection and rate limiting settings for free tier
         'DOWNLOAD_DELAY': 10,  # 10 second delay between requests to avoid hitting limits
@@ -56,9 +64,20 @@ class MunicipiosSpider(scrapy.Spider):
         dispatcher.connect(self.spider_closed, signals.spider_closed)
         self.logger.info("Spider de Municipios inicializado")
         
+        # Initialize state tracking variables
+        self.processed_count = 0
+        self.last_processed_url = None
+        self.quota_exhausted = False
+        self.start_time = time.time()
+        
+        # Set up signal handlers for graceful shutdown
+        signal.signal(signal.SIGINT, self._signal_handler)
+        signal.signal(signal.SIGTERM, self._signal_handler)
+        
         # Clean corrupted cache files on startup
         self._clean_corrupted_cache()
-        # En este punto NO hay acceso a settings todavía
+        # Ensure state directory exists
+        os.makedirs(self.state_dir, exist_ok=True)
 
     @classmethod
     def from_crawler(cls, crawler, *args, **kwargs):
@@ -108,7 +127,7 @@ class MunicipiosSpider(scrapy.Spider):
     
     def start_requests(self):
         """
-        Inicia las solicitudes con la configuración de impersonate
+        Inicia las solicitudes con la configuración de impersonate y manejo de estado
         """
         # Ensure browsers list is available
         if not hasattr(self, 'browsers') or not self.browsers:
@@ -116,16 +135,29 @@ class MunicipiosSpider(scrapy.Spider):
             self.logger.warning("Browsers not loaded, using fallback: chrome110")
         
         self.logger.info(f"Starting requests with browsers: {self.browsers}")
-
-        if os.path.exists(self.pending_file):
-            with open(self.pending_file, 'rb') as f:
-                pending_urls = pickle.load(f)
-            self.logger.info(f'Cargadas {len(pending_urls)} URLs pendientes')
-            for url in pending_urls:
-                yield scrapy.Request(url, callback=self.parse, dont_filter=True, meta={'impersonate': random.choice(self.browsers)})
+        
+        # Check for previous state and decide whether to resume or start fresh
+        if self._should_resume():
+            self.logger.info("Resuming from previous interrupted crawl")
+            self._load_state()
+            
+            # Load pending URLs if they exist
+            if os.path.exists(self.pending_file):
+                with open(self.pending_file, 'rb') as f:
+                    pending_urls = pickle.load(f)
+                self.logger.info(f'Resuming with {len(pending_urls)} pending URLs')
+                for url in pending_urls:
+                    yield scrapy.Request(url, callback=self.parse, dont_filter=True, 
+                                       meta={'impersonate': random.choice(self.browsers)})
+                return
         else:
-            for url in self.start_urls:
-                yield scrapy.Request(url, callback=self.parse, meta={'impersonate': random.choice(self.browsers)})       
+            self.logger.info("Starting fresh crawl")
+            self._clean_state_files()
+        
+        # Normal start
+        for url in self.start_urls:
+            yield scrapy.Request(url, callback=self.parse, 
+                               meta={'impersonate': random.choice(self.browsers)})
         
         # for url in self.start_urls:
         #     yield scrapy.Request(
@@ -141,13 +173,26 @@ class MunicipiosSpider(scrapy.Spider):
     
     def parse(self, response):
         """
-        Procesa la respuesta extrayendo y siguiendo enlaces relevantes.
+        Procesa la respuesta extrayendo y siguiendo enlaces relevantes con seguimiento de estado.
         """
-        # Extraer todas las URLs
+        # Check if quota is exhausted
+        if self.quota_exhausted:
+            self.logger.info("Quota exhausted, stopping processing")
+            return
+            
         self.logger.info(f"Parseando página: {response.url}")
+        
+        # Update state tracking
+        self.processed_count += 1
+        self.last_processed_url = response.url
+        
+        # Save checkpoint every 50 processed URLs
+        if self.processed_count % 50 == 0:
+            self._save_checkpoint()
         
         # Extraer todos los enlaces de la página
         links = response.css('a::attr(href)').getall()
+        discovered_urls = []
         
         for link in links:
             url = normalize_url(response.urljoin(link), self.target_url_pattern)
@@ -156,50 +201,192 @@ class MunicipiosSpider(scrapy.Spider):
             if is_no_visit(url, self.target_url_pattern, self.excluded_url_patterns):
                 continue
 
-            # self.logger.info(f"URL: {url} ha pasado el filtro de is_no_visit.")
-
-            # Evaluar si es una URL target para guardar (sin importar si fue visitada o no)
-            # Excluye páginas que no deben ser guardadas pero si visitadas
+            # Evaluar si es una URL target para guardar
             if is_target_url(url, self.target_url_pattern, self.excluded_url_endings, self.excluded_url_patterns):
-                # self.logger.debug(f"URL: {url} guardada como target url.")
                 url_item = UrlItem()
                 url_item['url'] = url
                 yield url_item
+                discovered_urls.append(url)
             
-            # Si no fue visitada, seguir la URL
-            # if url not in self.visited_urls:
-            #     self.logger.info(f"URL: {url} se procede a visitarla y se marcada como visitada.")
-            #     self.visited_urls.add(url)
-            
-            #     # Seguir la URL 
-            #     yield scrapy.Request(
-            #         url=url,
-            #         callback=self.parse,
-            #         # dont_filter=True,
-            #         meta={
-            #             'impersonate': random.choice(self.browsers),  # Usar el navegador seleccionado al azar
-            #         }
-                # )
             # Seguir la URL 
             yield scrapy.Request(
                 url=url,
                 callback=self.parse,
-                # dont_filter=True,
                 meta={
                     'impersonate': random.choice(self.browsers) if self.browsers else 'chrome110',
                 }
             )
+        
+        # Log progress
+        if self.processed_count % 10 == 0:
+            self.logger.info(f"Progress: {self.processed_count} pages processed, "
+                           f"{len(discovered_urls)} URLs discovered from this page")
 
     def spider_closed(self, spider, reason):
-        self.logger.info(f"Spider Closed")
-        # with open('visited_urls.csv', 'w', encoding='utf-8') as f:
-        #     for url in self.visited_urls:
-        #         f.write(f"{url}\n")
-        # self.logger.info(f"Se guardaron {len(self.visited_urls)} URLs visitadas.")
-
-        # # Solo borra JOBDIR si el spider terminó correctamente
-        # if reason == 'finished':
-        #     jobdir = self.settings.get('JOBDIR')
-        #     if jobdir and os.path.exists(jobdir):
-        #         shutil.rmtree(jobdir)
-        #         self.logger.info(f"JOBDIR eliminado: {jobdir}")
+        """
+        Handle spider closure with proper state management and cleanup
+        """
+        end_time = time.time()
+        duration = end_time - self.start_time
+        
+        self.logger.info(f"Spider closed with reason: {reason}")
+        self.logger.info(f"Total pages processed: {self.processed_count}")
+        self.logger.info(f"Crawl duration: {duration:.2f} seconds")
+        
+        if reason == 'finished':
+            # Successful completion - clean up all state files
+            self._clean_state_files()
+            self.logger.info("Successful completion - all state files cleaned")
+            
+        elif reason in ['quota_exhausted', 'user_interrupt', 'shutdown']:
+            # Interrupted - preserve state for resume
+            self._save_final_state(reason)
+            self._save_pending_requests()
+            self.logger.info(f"Spider interrupted ({reason}), state preserved for resume")
+            
+        else:
+            # Other reasons (errors, etc.)
+            self.logger.warning(f"Spider closed unexpectedly with reason: {reason}")
+            self._save_final_state(reason)
+    
+    def _signal_handler(self, signum, frame):
+        """
+        Handle interrupt signals (CTRL+C) gracefully
+        """
+        self.logger.info(f"Received signal {signum}, initiating graceful shutdown...")
+        if hasattr(self, 'crawler') and self.crawler.engine:
+            self.crawler.engine.close_spider(self, 'user_interrupt')
+        else:
+            sys.exit(0)
+    
+    def _should_resume(self):
+        """
+        Check if we should resume from a previous interrupted crawl
+        """
+        if not os.path.exists(self.state_file):
+            return False
+            
+        try:
+            with open(self.state_file, 'rb') as f:
+                last_state = pickle.load(f)
+            
+            # If last run completed successfully, don't resume
+            if last_state.get('reason') == 'finished':
+                self.logger.info("Previous crawl completed successfully, starting fresh")
+                return False
+                
+            # Check if state is recent (within 7 days)
+            state_age = time.time() - last_state.get('timestamp', 0)
+            if state_age > 7 * 24 * 3600:  # 7 days
+                self.logger.info("State file too old, starting fresh")
+                return False
+                
+            return True
+            
+        except Exception as e:
+            self.logger.warning(f"Could not load state file: {e}, starting fresh")
+            return False
+    
+    def _load_state(self):
+        """
+        Load previous spider state
+        """
+        try:
+            with open(self.state_file, 'rb') as f:
+                state = pickle.load(f)
+            
+            self.processed_count = state.get('processed_count', 0)
+            self.last_processed_url = state.get('last_processed_url')
+            self.start_time = state.get('start_time', time.time())
+            
+            self.logger.info(f"Loaded state: {self.processed_count} pages processed, "
+                           f"last URL: {self.last_processed_url}")
+                           
+        except Exception as e:
+            self.logger.error(f"Failed to load state: {e}")
+    
+    def _save_checkpoint(self):
+        """
+        Save current progress checkpoint
+        """
+        try:
+            checkpoint = {
+                'processed_count': self.processed_count,
+                'last_processed_url': self.last_processed_url,
+                'timestamp': time.time(),
+                'start_time': self.start_time
+            }
+            
+            with open(self.checkpoint_file, 'wb') as f:
+                pickle.dump(checkpoint, f)
+                
+            self.logger.debug(f"Checkpoint saved: {self.processed_count} pages processed")
+            
+        except Exception as e:
+            self.logger.error(f"Failed to save checkpoint: {e}")
+    
+    def _save_final_state(self, reason):
+        """
+        Save final state when spider is interrupted or closes
+        """
+        try:
+            state = {
+                'reason': reason,
+                'processed_count': self.processed_count,
+                'last_processed_url': self.last_processed_url,
+                'timestamp': time.time(),
+                'start_time': self.start_time,
+                'quota_exhausted': self.quota_exhausted
+            }
+            
+            with open(self.state_file, 'wb') as f:
+                pickle.dump(state, f)
+                
+            self.logger.info(f"Final state saved: reason={reason}, processed={self.processed_count}")
+            
+        except Exception as e:
+            self.logger.error(f"Failed to save final state: {e}")
+    
+    def _save_pending_requests(self):
+        """
+        Save pending requests from the scheduler for resume
+        """
+        try:
+            if not hasattr(self, 'crawler') or not self.crawler.engine:
+                return
+                
+            # Get pending requests from scheduler
+            pending_urls = []
+            scheduler = self.crawler.engine.slot.scheduler
+            
+            # Extract URLs from different queue types
+            if hasattr(scheduler, 'mqs'):
+                for queue in scheduler.mqs.values():
+                    for request in queue:
+                        pending_urls.append(request.url)
+            
+            if pending_urls:
+                with open(self.pending_file, 'wb') as f:
+                    pickle.dump(pending_urls, f)
+                self.logger.info(f"Saved {len(pending_urls)} pending URLs for resume")
+            
+        except Exception as e:
+            self.logger.error(f"Failed to save pending requests: {e}")
+    
+    def _clean_state_files(self):
+        """
+        Clean up all state files for a fresh start
+        """
+        files_to_clean = [
+            self.pending_file,
+            self.state_file,
+            self.checkpoint_file
+        ]
+        
+        for file_path in files_to_clean:
+            if os.path.exists(file_path):
+                try:
+                    os.remove(file_path)
+                    self.logger.debug(f"Cleaned state file: {file_path}")
+                except Exception as e:
+                    self.logger.warning(f"Could not clean state file {file_path}: {e}")

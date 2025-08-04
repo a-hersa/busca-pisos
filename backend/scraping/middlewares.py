@@ -100,6 +100,25 @@ class ScrapingAntProxyMiddleware:
                     error_body = res.read()
                     spider.logger.warning(f"ScrapingAnt config {i+1} site unreachable (404): {error_body}")
                     continue
+                elif res.status == 403:  # Check for quota exhaustion
+                    error_body = res.read()
+                    error_text = error_body.decode('utf-8') if error_body else ''
+                    spider.logger.error(f"ScrapingAnt proxy request failed: {res.status} {res.reason}")
+                    spider.logger.error(f"Response body: {error_body}")
+                    
+                    # Check if this is a quota limit error
+                    if "quota limit reached" in error_text.lower() or "requests quota limit" in error_text.lower():
+                        spider.logger.critical("ScrapingAnt quota exhausted - initiating graceful shutdown")
+                        spider.quota_exhausted = True
+                        # Close spider with quota_exhausted reason
+                        if hasattr(spider, 'crawler') and spider.crawler.engine:
+                            spider.crawler.engine.close_spider(spider, 'quota_exhausted')
+                        return None
+                    
+                    # Regular 403 error, try next config
+                    if i == len(configs) - 1:  # Last config failed
+                        return None
+                    continue
                 else:
                     spider.logger.error(f"ScrapingAnt proxy request failed: {res.status} {res.reason}")
                     error_body = res.read()
