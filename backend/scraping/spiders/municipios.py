@@ -1,11 +1,9 @@
 # -*- coding: utf-8 -*-
 import os
 import pickle
-import shutil
 import scrapy
 import logging
 import re
-import glob
 import time
 import signal
 import sys
@@ -38,7 +36,7 @@ class MunicipiosSpider(scrapy.Spider):
             'scraping.pipelines.UrlToCSVPipeline': 400,
         },
         'LOG_FILE': f'./logs/scraping-municipios.log',
-        # JOBDIR disabled - using custom state management instead
+        # Custom resume system using spider_state.pkl and pending_urls.pkl files
         
         # Anti-detection and rate limiting settings for free tier
         'DOWNLOAD_DELAY': 10,  # 10 second delay between requests to avoid hitting limits
@@ -74,8 +72,6 @@ class MunicipiosSpider(scrapy.Spider):
         signal.signal(signal.SIGINT, self._signal_handler)
         signal.signal(signal.SIGTERM, self._signal_handler)
         
-        # Clean corrupted cache files on startup
-        self._clean_corrupted_cache()
         # Ensure state directory exists
         os.makedirs(self.state_dir, exist_ok=True)
 
@@ -98,32 +94,6 @@ class MunicipiosSpider(scrapy.Spider):
         
         return spider
     
-    def _clean_corrupted_cache(self):
-        """
-        Clean corrupted cache files that cause OSError: Invalid argument
-        """
-        try:
-            # Clean corrupted queue files
-            crawls_dir = './scraping/crawls/municipios/'
-            if os.path.exists(crawls_dir):
-                # Remove .seen and .state files that can cause corruption
-                for pattern in ['*.seen', '*.state', 'requests.queue/*']:
-                    for file_path in glob.glob(os.path.join(crawls_dir, pattern)):
-                        try:
-                            if os.path.isfile(file_path):
-                                os.remove(file_path)
-                                self.logger.info(f"Removed corrupted cache file: {file_path}")
-                            elif os.path.isdir(file_path):
-                                shutil.rmtree(file_path)
-                                self.logger.info(f"Removed corrupted cache directory: {file_path}")
-                        except Exception as e:
-                            self.logger.warning(f"Could not remove cache file {file_path}: {e}")
-                
-                # Recreate clean directory structure
-                os.makedirs(crawls_dir, exist_ok=True)
-                self.logger.info(f"Cleaned cache directory: {crawls_dir}")
-        except Exception as e:
-            self.logger.warning(f"Cache cleanup failed: {e}")
     
     def start_requests(self):
         """
