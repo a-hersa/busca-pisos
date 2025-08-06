@@ -329,16 +329,40 @@ class MunicipiosSpider(scrapy.Spider):
             pending_urls = []
             scheduler = self.crawler.engine.slot.scheduler
             
-            # Extract URLs from different queue types
-            if hasattr(scheduler, 'mqs'):
-                for queue in scheduler.mqs.values():
-                    for request in queue:
+            # Extract URLs from memory queue (mqs)
+            if hasattr(scheduler, 'mqs') and scheduler.mqs:
+                # ScrapyPriorityQueue doesn't support iteration directly
+                # We need to pop all requests to extract URLs
+                temp_requests = []
+                while len(scheduler.mqs) > 0:
+                    request = scheduler.mqs.pop()
+                    if request:
                         pending_urls.append(request.url)
+                        temp_requests.append(request)
+                
+                # Put requests back into the scheduler for proper cleanup
+                for request in temp_requests:
+                    scheduler.enqueue_request(request)
+            
+            # Extract URLs from disk queue (dqs) if it exists
+            if hasattr(scheduler, 'dqs') and scheduler.dqs:
+                temp_requests = []
+                while len(scheduler.dqs) > 0:
+                    request = scheduler.dqs.pop()
+                    if request:
+                        pending_urls.append(request.url)
+                        temp_requests.append(request)
+                
+                # Put requests back into the scheduler for proper cleanup
+                for request in temp_requests:
+                    scheduler.enqueue_request(request)
             
             if pending_urls:
                 with open(self.pending_file, 'wb') as f:
                     pickle.dump(pending_urls, f)
                 self.logger.info(f"Saved {len(pending_urls)} pending URLs for resume")
+            else:
+                self.logger.info("No pending requests found to save")
             
         except Exception as e:
             self.logger.error(f"Failed to save pending requests: {e}")
