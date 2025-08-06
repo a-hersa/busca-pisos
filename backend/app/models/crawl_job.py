@@ -24,6 +24,12 @@ class CrawlJob(Base):
     # Relationships
     created_by_user = relationship("User", back_populates="crawl_jobs")
     executions = relationship("JobExecution", back_populates="job", cascade="all, delete-orphan")
+    
+    def get_municipio_count(self) -> int:
+        """Get count of start URLs that are municipios"""
+        if not self.start_urls:
+            return 0
+        return len(self.start_urls)
 
 class JobExecution(Base):
     __tablename__ = "job_executions"

@@ -1,9 +1,12 @@
 'use client'
 
-import { useState } from 'react'
-import { useForm, useFieldArray } from 'react-hook-form'
-import { CrawlJobCreate } from '@/types'
-import { X, Plus, Trash2, Loader2 } from 'lucide-react'
+import { useState, useEffect, useCallback } from 'react'
+import { useForm } from 'react-hook-form'
+import { CrawlJobCreate, MunicipioSelect, URLValidationResult } from '@/types'
+import { municipiosApi } from '@/lib/api'
+import { SearchableDropdown } from '@/components/ui/searchable-dropdown'
+import { X, Plus, AlertTriangle, CheckCircle, Loader2 } from 'lucide-react'
+import toast from 'react-hot-toast'
 
 interface CreateJobModalProps {
   isOpen: boolean
@@ -25,30 +28,103 @@ const SCHEDULE_OPTIONS = [
 
 export function CreateJobModal({ isOpen, onClose, onSubmit, isLoading }: CreateJobModalProps) {
   const [showAdvanced, setShowAdvanced] = useState(false)
+  const [municipios, setMunicipios] = useState<MunicipioSelect[]>([])
+  const [selectedUrls, setSelectedUrls] = useState<string[]>([])
+  const [municipiosLoading, setMunicipiosLoading] = useState(false)
+  const [validationResult, setValidationResult] = useState<URLValidationResult | null>(null)
+  const [validationLoading, setValidationLoading] = useState(false)
 
   const form = useForm<CrawlJobCreate>({
     defaultValues: {
       job_name: '',
       spider_name: 'propiedades',
-      start_urls: [''],
+      start_urls: [],
       schedule_type: 'manual',
       job_config: {}
     }
   })
 
-  // @ts-ignore
-  const { fields, append, remove } = useFieldArray({
-    control: form.control,
-    name: 'start_urls'
-  })
+  // Load municipios on component mount
+  useEffect(() => {
+    if (isOpen) {
+      loadMunicipios()
+    }
+  }, [isOpen])
+
+  // Update form when selected URLs change
+  useEffect(() => {
+    form.setValue('start_urls', selectedUrls)
+    
+    // Validate URLs when they change
+    if (selectedUrls.length > 0) {
+      validateUrls(selectedUrls)
+    } else {
+      setValidationResult(null)
+    }
+  }, [selectedUrls, form])
+
+  const loadMunicipios = async (search?: string) => {
+    try {
+      setMunicipiosLoading(true)
+      const data = await municipiosApi.list({ limit: 1000, search })
+      setMunicipios(data)
+    } catch (error) {
+      console.error('Error loading municipios:', error)
+      toast.error('Error cargando municipios')
+    } finally {
+      setMunicipiosLoading(false)
+    }
+  }
+
+  const validateUrls = async (urls: string[]) => {
+    if (urls.length === 0) {
+      setValidationResult(null)
+      return
+    }
+
+    try {
+      setValidationLoading(true)
+      const result = await municipiosApi.validateUrls(urls)
+      setValidationResult(result)
+    } catch (error) {
+      console.error('Error validating URLs:', error)
+      toast.error('Error validando URLs')
+    } finally {
+      setValidationLoading(false)
+    }
+  }
+
+  const handleSearch = useCallback((query: string) => {
+    loadMunicipios(query)
+  }, [])
 
   const onFormSubmit = (data: CrawlJobCreate) => {
-    // Filter out empty URLs
-    const filteredData = {
-      ...data,
-      start_urls: data.start_urls.filter(url => url.trim() !== '')
+    // Ensure we have URLs selected
+    if (selectedUrls.length === 0) {
+      toast.error('Selecciona al menos un municipio')
+      return
     }
-    onSubmit(filteredData)
+
+    // Check validation result
+    if (validationResult && !validationResult.valid) {
+      toast.error('Algunas URLs no son válidas. Revisa la selección.')
+      return
+    }
+
+    const submitData = {
+      ...data,
+      start_urls: selectedUrls
+    }
+    onSubmit(submitData)
+  }
+
+  const handleClose = () => {
+    // Reset all state when closing
+    setSelectedUrls([])
+    setValidationResult(null)
+    setShowAdvanced(false)
+    form.reset()
+    onClose()
   }
 
   if (!isOpen) return null
@@ -61,7 +137,7 @@ export function CreateJobModal({ isOpen, onClose, onSubmit, isLoading }: CreateJ
         <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full sm:p-6">
           <div className="absolute top-0 right-0 pt-4 pr-4">
             <button
-              onClick={onClose}
+              onClick={handleClose}
               className="bg-white rounded-md text-gray-400 hover:text-gray-600"
             >
               <X className="h-6 w-6" />
@@ -110,40 +186,79 @@ export function CreateJobModal({ isOpen, onClose, onSubmit, isLoading }: CreateJ
                   </select>
                 </div>
 
-                {/* Start URLs */}
+                {/* Municipios Selection */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    URLs de Inicio *
+                    Municipios *
                   </label>
-                  <div className="space-y-2">
-                    {fields.map((field, index) => (
-                      <div key={field.id} className="flex space-x-2">
-                        <input
-                          {...form.register(`start_urls.${index}` as const)}
-                          type="url"
-                          className="flex-1 border border-gray-300 rounded-md px-3 py-2 shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                          placeholder="https://www.idealista.com/..."
-                        />
-                        {fields.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => remove(index)}
-                            className="px-3 py-2 border border-gray-300 rounded-md text-red-600 hover:bg-red-50"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        )}
-                      </div>
-                    ))}
-                    <button
-                      type="button"
-                      onClick={() => append('')}
-                      className="flex items-center space-x-1 text-sm text-blue-600 hover:text-blue-800"
-                    >
-                      <Plus className="h-4 w-4" />
-                      <span>Agregar URL</span>
-                    </button>
-                  </div>
+                  <SearchableDropdown
+                    options={municipios.map(m => ({
+                      id: m.id,
+                      value: m.url,
+                      label: m.municipality_name,
+                      subtitle: m.url
+                    }))}
+                    value={selectedUrls}
+                    onChange={setSelectedUrls}
+                    placeholder="Selecciona municipios..."
+                    searchPlaceholder="Buscar municipios..."
+                    multiple={true}
+                    loading={municipiosLoading}
+                    onSearch={handleSearch}
+                    error={form.formState.errors.start_urls?.message}
+                  />
+                  
+                  {/* URL Validation Results */}
+                  {validationLoading && (
+                    <div className="mt-2 flex items-center space-x-2 text-sm text-gray-600">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span>Validando URLs...</span>
+                    </div>
+                  )}
+                  
+                  {validationResult && (
+                    <div className="mt-2 space-y-2">
+                      {validationResult.valid ? (
+                        <div className="flex items-center space-x-2 text-sm text-green-600">
+                          <CheckCircle className="h-4 w-4" />
+                          <span>
+                            {validationResult.valid_count} URLs válidas de {validationResult.total_urls}
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="space-y-1">
+                          <div className="flex items-center space-x-2 text-sm text-red-600">
+                            <AlertTriangle className="h-4 w-4" />
+                            <span>
+                              {validationResult.invalid_count} URLs inválidas de {validationResult.total_urls}
+                            </span>
+                          </div>
+                          {validationResult.invalid_urls.length > 0 && (
+                            <div className="ml-6">
+                              <p className="text-xs text-gray-500 mb-1">URLs inválidas:</p>
+                              <ul className="text-xs text-red-600 space-y-0.5">
+                                {validationResult.invalid_urls.slice(0, 3).map((url, idx) => (
+                                  <li key={idx} className="truncate" title={url}>
+                                    • {url}
+                                  </li>
+                                ))}
+                                {validationResult.invalid_urls.length > 3 && (
+                                  <li className="text-gray-500">
+                                    ... y {validationResult.invalid_urls.length - 3} más
+                                  </li>
+                                )}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
+                  <p className="mt-1 text-xs text-gray-500">
+                    Selecciona los municipios donde quieres buscar propiedades. 
+                    Las URLs se validan automáticamente.
+                  </p>
                 </div>
 
                 {/* Schedule Type */}
@@ -213,7 +328,7 @@ export function CreateJobModal({ isOpen, onClose, onSubmit, isLoading }: CreateJ
                 <div className="flex justify-end space-x-3 pt-4">
                   <button
                     type="button"
-                    onClick={onClose}
+                    onClick={handleClose}
                     className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
                   >
                     Cancelar

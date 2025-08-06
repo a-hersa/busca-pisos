@@ -139,3 +139,12 @@ export const analyticsApi = {
 export const exportApi = {
   exportData: (format: string, data: any) => api.post(`/api/export/${format}`, data),
 };
+
+export const municipiosApi = {
+  list: (params?: { limit?: number; search?: string }) => {
+    const cleanedParams = cleanParams(params);
+    const queryString = Object.keys(cleanedParams).length > 0 ? '?' + new URLSearchParams(cleanedParams).toString() : '';
+    return api.get(`/api/municipios${queryString}`);
+  },
+  validateUrls: (urls: string[]) => api.post('/api/jobs/validate-urls', urls),
+};

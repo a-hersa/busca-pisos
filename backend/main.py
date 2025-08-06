@@ -5,7 +5,7 @@ import os
 from dotenv import load_dotenv
 
 from app.database import init_db
-from app.routers import auth, users, jobs, properties, admin
+from app.routers import auth, users, jobs, properties, admin, municipios
 from app.websocket import manager
 from app.core.deps import get_current_user
 from app.models.user import User
@@ -45,6 +45,7 @@ app.include_router(auth.router, prefix="/auth", tags=["authentication"])
 app.include_router(users.router, prefix="/api/users", tags=["users"])
 app.include_router(jobs.router, prefix="/api/jobs", tags=["crawl-jobs"])
 app.include_router(properties.router, prefix="/api/properties", tags=["properties"])
+app.include_router(municipios.router, prefix="/api/municipios", tags=["municipios"])
 app.include_router(admin.router, prefix="/api/admin", tags=["admin"])
 
 # Import and include additional routers

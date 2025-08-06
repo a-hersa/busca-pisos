@@ -9,6 +9,7 @@ import os
 from app.database import get_async_session
 from app.models.user import User
 from app.models.crawl_job import CrawlJob
+from app.models.municipio import Municipio
 from app.schemas.crawl_job import CrawlJobCreate, CrawlJobResponse, CrawlJobUpdate
 from app.core.deps import get_current_user, log_action
 
@@ -16,6 +17,42 @@ from app.core.deps import get_current_user, log_action
 redis_client = redis.Redis.from_url(os.getenv("REDIS_URL", "redis://localhost:6379/0"))
 
 router = APIRouter()
+
+@router.post("/validate-urls")
+async def validate_job_urls(
+    urls: List[str],
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session)
+):
+    """
+    Validate URLs for job creation without actually creating a job.
+    This endpoint can be used by the frontend to validate URLs before form submission.
+    """
+    invalid_urls = []
+    valid_urls = []
+    
+    for url in urls:
+        result = await session.execute(
+            select(Municipio).where(Municipio.url == url)
+        )
+        municipio = result.scalar_one_or_none()
+        if municipio:
+            valid_urls.append({
+                "url": url,
+                "municipio_id": municipio.id,
+                "municipality_name": municipio.get_municipality_name()
+            })
+        else:
+            invalid_urls.append(url)
+    
+    return {
+        "valid": len(invalid_urls) == 0,
+        "valid_urls": valid_urls,
+        "invalid_urls": invalid_urls,
+        "total_urls": len(urls),
+        "valid_count": len(valid_urls),
+        "invalid_count": len(invalid_urls)
+    }
 
 @router.get("/debug-all")
 async def debug_all_jobs(session: AsyncSession = Depends(get_async_session)):
@@ -74,6 +111,27 @@ async def create_crawl_job(
 ):
     print(f"🆕 CREATING JOB: User {current_user.user_id} ({current_user.username})")
     print(f"📝 JOB DATA: {job_data}")
+    
+    # Validate that all start_urls exist in municipios table
+    if job_data.start_urls:
+        invalid_urls = []
+        for url in job_data.start_urls:
+            result = await session.execute(
+                select(Municipio).where(Municipio.url == url)
+            )
+            municipio = result.scalar_one_or_none()
+            if not municipio:
+                invalid_urls.append(url)
+        
+        if invalid_urls:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "message": "Some URLs are not valid municipios",
+                    "invalid_urls": invalid_urls,
+                    "hint": "Only URLs from the municipios table are allowed as starting URLs"
+                }
+            )
     
     new_job = CrawlJob(
         job_name=job_data.job_name,
@@ -167,8 +225,29 @@ async def update_crawl_job(
             detail="Job not found"
         )
     
-    # Update job fields
+    # Validate start_urls if they are being updated
     update_data = job_update.dict(exclude_unset=True)
+    if "start_urls" in update_data and update_data["start_urls"]:
+        invalid_urls = []
+        for url in update_data["start_urls"]:
+            result = await session.execute(
+                select(Municipio).where(Municipio.url == url)
+            )
+            municipio = result.scalar_one_or_none()
+            if not municipio:
+                invalid_urls.append(url)
+        
+        if invalid_urls:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "message": "Some URLs are not valid municipios",
+                    "invalid_urls": invalid_urls,
+                    "hint": "Only URLs from the municipios table are allowed as starting URLs"
+                }
+            )
+    
+    # Update job fields
     for field, value in update_data.items():
         setattr(job, field, value)
     

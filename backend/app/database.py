@@ -20,5 +20,5 @@ async def get_async_session():
 async def init_db():
     async with engine.begin() as conn:
         # Import all models to register them with Base
-        from app.models import user, crawl_job, audit_log
+        from app.models import user, crawl_job, audit_log, property, municipio
         await conn.run_sync(Base.metadata.create_all)

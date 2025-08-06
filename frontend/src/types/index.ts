@@ -110,3 +110,22 @@ export interface WebSocketMessage {
   details?: Record<string, any>
   timestamp: string
 }
+
+export interface MunicipioSelect {
+  id: number
+  url: string
+  municipality_name: string
+}
+
+export interface URLValidationResult {
+  valid: boolean
+  valid_urls: Array<{
+    url: string
+    municipio_id: number
+    municipality_name: string
+  }>
+  invalid_urls: string[]
+  total_urls: number
+  valid_count: number
+  invalid_count: number
+}
